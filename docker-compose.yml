@@ -1,0 +1,32 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: pm_nginx
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - /var/www:/var/www/host_projects:ro
+    depends_on:
+      - php
+    networks:
+      - pm_network
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pm_php
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - /var/www:/var/www/host_projects:ro
+    networks:
+      - pm_network
+
+networks:
+  pm_network:
+    driver: bridge

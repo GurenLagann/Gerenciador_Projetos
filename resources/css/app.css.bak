@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Paginação Laravel */
+nav[aria-label="Pagination Navigation"] {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+nav[aria-label="Pagination Navigation"] span[aria-current="page"] span,
+nav[aria-label="Pagination Navigation"] button,
+nav[aria-label="Pagination Navigation"] a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    font-size: .75rem;
+    font-weight: 500;
+    border: 1px solid #1a1a2e;
+    background: #0d0d14;
+    color: #64748b;
+    transition: all .15s ease;
+    cursor: pointer;
+}
+nav[aria-label="Pagination Navigation"] span[aria-current="page"] span {
+    background: rgba(99,102,241,.15);
+    border-color: rgba(99,102,241,.3);
+    color: #818cf8;
+}
+nav[aria-label="Pagination Navigation"] a:hover,
+nav[aria-label="Pagination Navigation"] button:hover {
+    background: rgba(255,255,255,.04);
+    color: #e2e8f0;
+    border-color: #2a2a3e;
+}
+nav[aria-label="Pagination Navigation"] span[aria-disabled="true"] span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    font-size: .75rem;
+    color: #2a2a3e;
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+/* Animação de loading do Livewire */
+[wire\\:loading] { animation: pulse .8s cubic-bezier(.4,0,.6,1) infinite; }
+
+/* Focus ring personalizado */
+input:focus, textarea:focus, select:focus {
+    box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+}
+
+/* Scrollbar fina em toda a página */
+* { scrollbar-width: thin; scrollbar-color: #1e1e2e transparent; }
