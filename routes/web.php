@@ -16,6 +16,7 @@ Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('pro
 Route::patch('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
 Route::patch('/projects/{project}/status', [ProjectController::class, 'updateStatus'])->name('projects.status');
 Route::patch('/projects/{project}/progress', [ProjectController::class, 'updateProgress'])->name('projects.progress');
+Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
 
 // Milestones
 Route::post('/projects/{project}/milestones', [MilestoneController::class, 'store'])->name('milestones.store');

@@ -41,18 +41,21 @@ class AnnotationController extends Controller
         ]);
 
         $annotation->update($validated);
+
         return back()->with('success', 'Annotation updated.');
     }
 
     public function destroy(Annotation $annotation)
     {
         $annotation->delete();
+
         return back()->with('success', 'Annotation deleted.');
     }
 
     public function pin(Annotation $annotation)
     {
-        $annotation->update(['pinned' => !$annotation->pinned]);
+        $annotation->update(['pinned' => ! $annotation->pinned]);
+
         return back()->with('success', 'Annotation pin toggled.');
     }
 }

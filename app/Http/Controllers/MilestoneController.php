@@ -31,21 +31,24 @@ class MilestoneController extends Controller
         ]);
 
         $milestone->update($validated);
+
         return back()->with('success', 'Milestone updated.');
     }
 
     public function toggle(Request $request, Project $project, Milestone $milestone)
     {
         $milestone->update([
-            'completed' => !$milestone->completed,
-            'completed_at' => !$milestone->completed ? now() : null,
+            'completed' => ! $milestone->completed,
+            'completed_at' => ! $milestone->completed ? now() : null,
         ]);
+
         return back()->with('success', 'Milestone toggled.');
     }
 
     public function destroy(Project $project, Milestone $milestone)
     {
         $milestone->delete();
+
         return back()->with('success', 'Milestone deleted.');
     }
 
@@ -55,6 +58,7 @@ class MilestoneController extends Controller
         foreach ($request->order as $index => $id) {
             Milestone::where('id', $id)->update(['order' => $index]);
         }
+
         return response()->json(['success' => true]);
     }
 }

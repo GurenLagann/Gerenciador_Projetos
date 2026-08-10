@@ -6,7 +6,7 @@
     <title><?php echo e(config('app.name', 'Project Manager')); ?> — <?php echo $__env->yieldContent('title', 'Painel'); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
     <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::styles(); ?>
 
@@ -18,11 +18,14 @@
             --border:    #253047;
             --border-2:  #2a3a52;
             --border-3:  #354865;
-            --muted-3:   #4e6080;
-            --muted-2:   #607090;
+            --muted-3:   #718aa2;
+            --muted-2:   #748ba4;
             --muted-1:   #7890aa;
             --text:      #c9d8ee;
+            --surface-3: #212c40;
+            --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
         }
+        html, body { overflow-x: hidden; }
         body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--text); }
 
         /* Sidebar */
@@ -76,14 +79,22 @@
     </style>
 </head>
 <body class="h-full antialiased">
-<div class="flex h-full">
+<div class="flex h-full" x-data="{ mobileNavOpen: false }" @keydown.escape.window="mobileNavOpen = false">
 
     
-    <aside class="w-64 flex flex-col fixed inset-y-0 z-20"
+    <div x-show="mobileNavOpen" x-cloak @click="mobileNavOpen = false"
+        class="fixed inset-0 z-30 lg:hidden" style="background:rgba(6,9,16,.65);"
+        x-transition:enter="transition-opacity duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition-opacity duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+
+    
+    <aside
+        class="w-64 flex flex-col fixed inset-y-0 z-40 -translate-x-full lg:translate-x-0 transition-transform duration-200"
+        :class="{ 'translate-x-0': mobileNavOpen }"
         style="background:#141c2b; border-right:1px solid var(--border);">
 
         
-        <div class="px-5 py-5" style="border-bottom:1px solid var(--border);">
+        <div class="px-5 py-5 flex items-center justify-between" style="border-bottom:1px solid var(--border);">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                     style="background:linear-gradient(135deg,#6366f1,#8b5cf6); box-shadow:0 4px 12px rgba(99,102,241,.35);">
@@ -96,6 +107,12 @@
                     <div class="text-xs" style="color:var(--muted-2);">workspace</div>
                 </div>
             </div>
+            <button type="button" @click="mobileNavOpen = false" aria-label="Fechar menu"
+                class="lg:hidden w-11 h-11 flex items-center justify-center rounded-lg flex-shrink-0" style="color:var(--muted-1);">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
         </div>
 
         
@@ -103,7 +120,7 @@
             <p class="text-xs font-semibold px-3 mb-2" style="color:var(--muted-3); letter-spacing:.08em;">MENU</p>
 
             <a href="<?php echo e(route('dashboard')); ?>"
-                class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm <?php echo e(request()->routeIs('dashboard') ? 'active' : ''); ?>"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm <?php echo e(request()->routeIs('dashboard') ? 'active' : ''); ?>"
                 style="<?php echo e(!request()->routeIs('dashboard') ? 'color:var(--muted-1);' : ''); ?>">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10-3a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1v-7z"/>
@@ -112,7 +129,7 @@
             </a>
 
             <a href="<?php echo e(route('projects.index')); ?>"
-                class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm <?php echo e(request()->routeIs('projects.*') ? 'active' : ''); ?>"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm <?php echo e(request()->routeIs('projects.*') ? 'active' : ''); ?>"
                 style="<?php echo e(!request()->routeIs('projects.*') ? 'color:var(--muted-1);' : ''); ?>">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7a2 2 0 012-2h3l2 2h9a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
@@ -121,7 +138,7 @@
             </a>
 
             <a href="<?php echo e(route('ideas.index')); ?>"
-                class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm <?php echo e(request()->routeIs('ideas.*') ? 'active' : ''); ?>"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 lg:py-2 rounded-lg text-sm <?php echo e(request()->routeIs('ideas.*') ? 'active' : ''); ?>"
                 style="<?php echo e(!request()->routeIs('ideas.*') ? 'color:var(--muted-1);' : ''); ?>">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.347A5.002 5.002 0 0112 21a5.002 5.002 0 01-4.657-3.153l-.347-.347z"/>
@@ -132,34 +149,52 @@
 
         
         <div class="px-3 pb-5 pt-4" style="border-top:1px solid var(--border);">
-            <form method="POST" action="<?php echo e(route('projects.scan')); ?>">
-                <?php echo csrf_field(); ?>
-                <button type="submit"
-                    class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 hover:shadow-lg"
-                    style="background:linear-gradient(135deg,#059669,#0d9488); box-shadow:0 2px 8px rgba(5,150,105,.25);">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    Escanear Projetos
-                </button>
-            </form>
+            <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('scanner-status', ['fullWidth' => true]);
+
+$__key = null;
+
+$__key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-2999907725-0', $__key);
+
+$__html = app('livewire')->mount($__name, $__params, $__key);
+
+echo $__html;
+
+unset($__html);
+unset($__key);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
         </div>
     </aside>
 
     
-    <div class="flex-1 flex flex-col min-h-full" style="margin-left:16rem;">
+    <div class="flex-1 flex flex-col min-h-full lg:ml-64">
 
         
-        <header class="sticky top-0 z-10 flex items-center justify-between px-5 lg:px-8 h-14"
+        <header class="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 lg:px-8 h-14"
             style="background:rgba(13,17,23,.88); backdrop-filter:blur(14px); border-bottom:1px solid var(--border);">
-            <h2 class="text-sm font-medium" style="color:var(--muted-1);"><?php echo $__env->yieldContent('breadcrumb', 'Painel'); ?></h2>
-            <div class="flex items-center gap-2 text-xs" style="color:var(--muted-2);">
+            <div class="flex items-center gap-3 min-w-0">
+                <button type="button" @click="mobileNavOpen = true" aria-label="Abrir menu"
+                    class="lg:hidden w-11 h-11 -ml-1.5 flex items-center justify-center rounded-lg flex-shrink-0" style="color:var(--muted-1);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <h2 class="text-sm font-medium truncate" style="color:var(--muted-1);"><?php echo $__env->yieldContent('breadcrumb', 'Painel'); ?></h2>
+            </div>
+            <div class="hidden sm:flex items-center gap-2 text-xs flex-shrink-0" style="color:var(--muted-2);">
                 <div class="w-1.5 h-1.5 rounded-full" style="background:#10b981; box-shadow:0 0 6px rgba(16,185,129,.6);"></div>
                 online
             </div>
         </header>
 
-        <main class="flex-1 px-5 lg:px-8 py-6">
+        <main class="flex-1 px-4 sm:px-5 lg:px-8 py-6">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('success')): ?>
             <div class="toast-enter mb-5 flex items-center gap-3 px-4 py-3 rounded-xl text-sm border"
                 style="background:rgba(5,150,105,.12); border-color:rgba(5,150,105,.3); color:#34d399;">
@@ -186,6 +221,12 @@
 </div>
 <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::scripts(); ?>
 
+<script>
+    window.addEventListener('scan-complete', () => {
+        setTimeout(() => window.location.reload(), 700);
+    });
+</script>
+<?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 </html>
 <?php /**PATH /var/www/resources/views/layouts/app.blade.php ENDPATH**/ ?>

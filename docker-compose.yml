@@ -13,6 +13,7 @@ services:
       - php
     networks:
       - pm_network
+      - traefik-net
 
   php:
     build:
@@ -30,3 +31,5 @@ services:
 networks:
   pm_network:
     driver: bridge
+  traefik-net:
+    external: true

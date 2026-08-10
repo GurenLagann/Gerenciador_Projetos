@@ -118,7 +118,7 @@
                         <h4 class="text-sm font-semibold text-white truncate"><?php echo e($annotation->title); ?></h4>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
-                    <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <div class="flex items-center gap-0.5 flex-shrink-0">
                         <button wire:click="pin(<?php echo e($annotation->id); ?>)"
                             class="p-1.5 rounded-lg transition-all text-xs"
                             style="<?php echo e($annotation->pinned ? 'color:#818cf8; background:rgba(99,102,241,.15);' : 'color:var(--muted-2);'); ?>"
@@ -138,11 +138,12 @@
                             </svg>
                         </button>
                         <button wire:click="delete(<?php echo e($annotation->id); ?>)"
+                            wire:confirm="Excluir esta anotação? Essa ação não pode ser desfeita."
                             class="p-1.5 rounded-lg transition-all"
                             style="color:var(--muted-2);"
                             onmouseover="this.style.background='rgba(239,68,68,.15)'; this.style.color='#fca5a5';"
                             onmouseout="this.style.background='transparent'; this.style.color='var(--muted-2)';"
-                            title="Excluir">
+                            title="Excluir" aria-label="Excluir anotação">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>

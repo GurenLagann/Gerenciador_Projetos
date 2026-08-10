@@ -7,23 +7,15 @@
 @endsection
 @section('content')
 @php
-$statusMeta = [
-    'idea'        => ['label'=>'Ideia',       'color'=>'#94a3b8','bg'=>'rgba(148,163,184,.12)','bar'=>'#64748b'],
-    'planning'    => ['label'=>'Planejamento','color'=>'#60a5fa','bg'=>'rgba(96,165,250,.13)', 'bar'=>'#3b82f6'],
-    'in-progress' => ['label'=>'Em Andamento','color'=>'#a5b4fc','bg'=>'rgba(165,180,252,.13)','bar'=>'#6366f1'],
-    'paused'      => ['label'=>'Pausado',     'color'=>'#fcd34d','bg'=>'rgba(252,211,77,.12)', 'bar'=>'#f59e0b'],
-    'done'        => ['label'=>'Concluido',   'color'=>'#6ee7b7','bg'=>'rgba(110,231,183,.12)','bar'=>'#10b981'],
-    'archived'    => ['label'=>'Arquivado',   'color'=>'#fca5a5','bg'=>'rgba(252,165,165,.12)','bar'=>'#ef4444'],
-];
-$sm = $statusMeta[$project->status] ?? $statusMeta['idea'];
+$sm = $project->status;
 $git = $project->git_info;
 @endphp
 
-<div class="space-y-6 max-w-6xl">
+<div class="space-y-6 max-w-7xl">
 
     {{-- Project header --}}
     <div class="rounded-2xl border overflow-hidden" style="background:var(--surface); border-color:var(--border);">
-        <div class="h-0.5" style="background:{{ $sm['bar'] }};"></div>
+        <div class="h-0.5" style="background:{{ $sm->bar }};"></div>
         <div class="p-6">
             <div class="flex flex-col sm:flex-row items-start gap-5">
                 <div class="flex-1 min-w-0">
@@ -50,17 +42,26 @@ $git = $project->git_info;
                 </div>
 
                 <div class="flex flex-col sm:items-end gap-3 flex-shrink-0 w-full sm:w-auto">
-                    <form method="POST" action="{{ route('projects.status', $project) }}">
+                    <form method="POST" action="{{ route('projects.status', $project) }}" class="w-full sm:w-auto">
                         @csrf @method('PATCH')
                         <select name="status" onchange="this.form.submit()"
-                            class="text-sm rounded-xl border px-3 py-2 font-medium focus:ring-0 focus:outline-none"
-                            style="background:var(--surface-2); border-color:var(--border-2); color:{{ $sm['color'] }};">
-                            @foreach(['idea','planning','in-progress','paused','done','archived'] as $s)
-                            @php $m = $statusMeta[$s]; @endphp
-                            <option value="{{ $s }}" @selected($project->status === $s)
-                                style="color:{{ $m['color'] }};">{{ $m['label'] }}</option>
+                            class="text-sm rounded-xl border px-3 py-2 font-medium focus:ring-0 focus:outline-none w-full sm:w-auto"
+                            style="background:var(--surface-2); border-color:var(--border-2); color:{{ $sm->color }};">
+                            @foreach($statuses as $s)
+                            <option value="{{ $s->code }}" @selected($project->status_id === $s->id)
+                                style="color:{{ $s->color }};">{{ $s->label }}</option>
                             @endforeach
                         </select>
+                    </form>
+                    <form method="POST" action="{{ route('projects.destroy', $project) }}"
+                        onsubmit="return confirm('Remover este projeto do painel? Ele será ignorado em futuros scans.')">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="text-xs px-3 py-2 rounded-xl border font-medium transition-colors w-full"
+                            style="border-color:var(--border-2); color:var(--muted-1);"
+                            onmouseover="this.style.background='rgba(239,68,68,.12)'; this.style.color='#fca5a5'; this.style.borderColor='rgba(239,68,68,.3)';"
+                            onmouseout="this.style.background='transparent'; this.style.color='var(--muted-1)'; this.style.borderColor='var(--border-2)';">
+                            Remover projeto
+                        </button>
                     </form>
                     @if($git)
                     <div class="flex items-center gap-2 text-xs" style="color:var(--muted-2);">
@@ -179,11 +180,11 @@ $git = $project->git_info;
                         {{ $milestone->title }}
                     </span>
                     <form method="POST" action="{{ route('milestones.destroy', [$project, $milestone]) }}"
-                        class="opacity-0 group-hover:opacity-100 transition-opacity">
+                        onsubmit="return confirm('Excluir este marco?')">
                         @csrf @method('DELETE')
                         <button type="submit"
                             class="w-5 h-5 rounded flex items-center justify-center text-sm transition-colors hover:bg-red-900/30"
-                            style="color:var(--muted-2);">&times;</button>
+                            style="color:var(--muted-2);" aria-label="Excluir marco">&times;</button>
                     </form>
                 </div>
                 @empty

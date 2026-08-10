@@ -3,37 +3,43 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\ProjectStatus;
 use App\Services\ProjectScannerService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ProjectController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Project::withCount('milestones');
+        $query = Project::withCount('milestones')->with('status');
 
         if ($request->status) {
-            $query->where('status', $request->status);
+            $query->whereRelation('status', 'code', $request->status);
         }
 
         $sort = $request->get('sort', 'latest');
         match ($sort) {
             'name' => $query->orderBy('name'),
             'progress' => $query->orderByDesc('progress'),
-            'status' => $query->orderBy('status'),
+            'status' => $query->join('project_statuses', 'project_statuses.id', '=', 'projects.status_id')
+                ->orderBy('project_statuses.sort_order')
+                ->select('projects.*'),
             default => $query->latest(),
         };
 
         $projects = $query->paginate(12)->withQueryString();
-        $statuses = ['idea', 'planning', 'in-progress', 'paused', 'done', 'archived'];
+        $statuses = ProjectStatus::orderBy('sort_order')->get();
 
         return view('projects.index', compact('projects', 'statuses'));
     }
 
     public function show(Project $project)
     {
-        $project->load(['milestones', 'annotations', 'tags']);
-        return view('projects.show', compact('project'));
+        $project->load(['milestones', 'annotations', 'tags', 'status']);
+        $statuses = ProjectStatus::orderBy('sort_order')->get();
+
+        return view('projects.show', compact('project', 'statuses'));
     }
 
     public function update(Request $request, Project $project)
@@ -52,8 +58,10 @@ class ProjectController extends Controller
 
     public function updateStatus(Request $request, Project $project)
     {
-        $request->validate(['status' => 'required|in:idea,planning,in-progress,paused,done,archived']);
-        $project->update(['status' => $request->status]);
+        $request->validate(['status' => ['required', Rule::exists('project_statuses', 'code')]]);
+        $statusId = ProjectStatus::where('code', $request->status)->value('id');
+        $project->update(['status_id' => $statusId]);
+
         return back()->with('success', 'Status updated.');
     }
 
@@ -61,13 +69,22 @@ class ProjectController extends Controller
     {
         $request->validate(['progress' => 'required|integer|min:0|max:100']);
         $project->update(['progress' => $request->progress]);
+
         return back()->with('success', 'Progress updated.');
+    }
+
+    public function destroy(Project $project)
+    {
+        $project->delete();
+
+        return redirect()->route('projects.index')->with('success', 'Projeto removido.');
     }
 
     public function scan(ProjectScannerService $scanner)
     {
         $results = $scanner->scan();
         $count = count($results);
+
         return back()->with('success', "Scan complete. {$count} projects found.");
     }
 }

@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class Project extends Model
@@ -16,7 +17,7 @@ class Project extends Model
 
     protected $fillable = [
         'name', 'slug', 'path', 'description', 'tech_stack', 'detected_files', 'git_info',
-        'status', 'progress', 'color', 'icon', 'is_scanned', 'last_scanned_at',
+        'status_id', 'progress', 'color', 'icon', 'is_scanned', 'last_scanned_at',
     ];
 
     protected $casts = [
@@ -33,6 +34,9 @@ class Project extends Model
         static::creating(function (Project $project) {
             if (empty($project->slug)) {
                 $project->slug = Str::slug($project->name);
+            }
+            if (empty($project->status_id)) {
+                $project->status_id = ProjectStatus::where('code', 'planning')->value('id');
             }
         });
     }
@@ -52,11 +56,19 @@ class Project extends Model
         return $this->morphToMany(Tag::class, 'taggable', 'taggables');
     }
 
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(ProjectStatus::class);
+    }
+
     public function getMilestoneProgressAttribute(): int
     {
         $total = $this->milestones()->count();
-        if ($total === 0) return 0;
+        if ($total === 0) {
+            return 0;
+        }
         $completed = $this->milestones()->where('completed', true)->count();
+
         return (int) round(($completed / $total) * 100);
     }
 

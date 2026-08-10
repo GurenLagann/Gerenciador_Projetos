@@ -7,23 +7,11 @@
 @endsection
 @section('content')
 @php
-$statusMeta = [
-    'raw'       => ['label'=>'Bruto',      'color'=>'#94a3b8','bg'=>'rgba(148,163,184,.12)'],
-    'exploring' => ['label'=>'Explorando', 'color'=>'#60a5fa','bg'=>'rgba(96,165,250,.13)'],
-    'validated' => ['label'=>'Validado',   'color'=>'#6ee7b7','bg'=>'rgba(110,231,183,.12)'],
-    'parked'    => ['label'=>'Pausado',    'color'=>'#fcd34d','bg'=>'rgba(252,211,77,.12)'],
-    'converted' => ['label'=>'Convertido', 'color'=>'#c4b5fd','bg'=>'rgba(196,181,253,.12)'],
-];
-$priorityMeta = [
-    'low'    => ['label'=>'Baixa', 'dot'=>'#4e6080'],
-    'medium' => ['label'=>'Media', 'dot'=>'#f59e0b'],
-    'high'   => ['label'=>'Alta',  'dot'=>'#ef4444'],
-];
-$sm = $statusMeta[$idea->status] ?? $statusMeta['raw'];
-$pm = $priorityMeta[$idea->priority] ?? $priorityMeta['medium'];
+$sm = $idea->status;
+$pm = $idea->priority;
 @endphp
 
-<div class="space-y-6 max-w-5xl">
+<div class="space-y-6 max-w-6xl">
 
     <div class="rounded-2xl border p-6" style="background:var(--surface); border-color:var(--border);">
         <div class="flex flex-col sm:flex-row items-start gap-5">
@@ -42,10 +30,10 @@ $pm = $priorityMeta[$idea->priority] ?? $priorityMeta['medium'];
                 @endif
                 <div class="flex items-center gap-3">
                     <span class="text-xs px-2.5 py-1 rounded-lg font-medium"
-                        style="background:{{ $sm['bg'] }}; color:{{ $sm['color'] }};">{{ $sm['label'] }}</span>
+                        style="background:{{ $sm->bg }}; color:{{ $sm->color }};">{{ $sm->label }}</span>
                     <span class="text-xs flex items-center gap-1.5" style="color:var(--muted-1);">
-                        <span class="w-1.5 h-1.5 rounded-full" style="background:{{ $pm['dot'] }};"></span>
-                        Prioridade {{ $pm['label'] }}
+                        <span class="w-1.5 h-1.5 rounded-full" style="background:{{ $pm->dot }};"></span>
+                        Prioridade {{ $pm->label }}
                     </span>
                 </div>
             </div>
@@ -56,15 +44,14 @@ $pm = $priorityMeta[$idea->priority] ?? $priorityMeta['medium'];
                     <select name="status" onchange="this.form.submit()"
                         class="text-sm rounded-xl border px-3 py-2 focus:ring-0 focus:outline-none"
                         style="background:var(--surface-2); border-color:var(--border-2); color:var(--text);">
-                        @foreach(['raw','exploring','validated','parked','converted'] as $s)
-                        @php $m = $statusMeta[$s]; @endphp
-                        <option value="{{ $s }}" @selected($idea->status === $s)
-                            style="color:{{ $m['color'] }};">{{ $m['label'] }}</option>
+                        @foreach($statuses as $s)
+                        <option value="{{ $s->code }}" @selected($idea->status_id === $s->id)
+                            style="color:{{ $s->color }};">{{ $s->label }}</option>
                         @endforeach
                     </select>
                 </form>
 
-                @if($idea->status !== 'converted')
+                @if($idea->status->code !== 'converted')
                 <form method="POST" action="{{ route('ideas.convert', $idea) }}">
                     @csrf
                     <button type="submit"

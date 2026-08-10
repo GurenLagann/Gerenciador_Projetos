@@ -6,23 +6,11 @@
 <?php $__env->stopSection(); ?>
 <?php $__env->startSection('content'); ?>
 <?php
-$statusMeta = [
-    'raw'       => ['label'=>'Bruto',      'color'=>'#94a3b8','bg'=>'rgba(148,163,184,.12)'],
-    'exploring' => ['label'=>'Explorando', 'color'=>'#60a5fa','bg'=>'rgba(96,165,250,.13)'],
-    'validated' => ['label'=>'Validado',   'color'=>'#6ee7b7','bg'=>'rgba(110,231,183,.12)'],
-    'parked'    => ['label'=>'Pausado',    'color'=>'#fcd34d','bg'=>'rgba(252,211,77,.12)'],
-    'converted' => ['label'=>'Convertido', 'color'=>'#c4b5fd','bg'=>'rgba(196,181,253,.12)'],
-];
-$priorityMeta = [
-    'low'    => ['label'=>'Baixa', 'dot'=>'#4e6080'],
-    'medium' => ['label'=>'Media', 'dot'=>'#f59e0b'],
-    'high'   => ['label'=>'Alta',  'dot'=>'#ef4444'],
-];
-$sm = $statusMeta[$idea->status] ?? $statusMeta['raw'];
-$pm = $priorityMeta[$idea->priority] ?? $priorityMeta['medium'];
+$sm = $idea->status;
+$pm = $idea->priority;
 ?>
 
-<div class="space-y-6 max-w-5xl">
+<div class="space-y-6 max-w-6xl">
 
     <div class="rounded-2xl border p-6" style="background:var(--surface); border-color:var(--border);">
         <div class="flex flex-col sm:flex-row items-start gap-5">
@@ -41,10 +29,10 @@ $pm = $priorityMeta[$idea->priority] ?? $priorityMeta['medium'];
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 <div class="flex items-center gap-3">
                     <span class="text-xs px-2.5 py-1 rounded-lg font-medium"
-                        style="background:<?php echo e($sm['bg']); ?>; color:<?php echo e($sm['color']); ?>;"><?php echo e($sm['label']); ?></span>
+                        style="background:<?php echo e($sm->bg); ?>; color:<?php echo e($sm->color); ?>;"><?php echo e($sm->label); ?></span>
                     <span class="text-xs flex items-center gap-1.5" style="color:var(--muted-1);">
-                        <span class="w-1.5 h-1.5 rounded-full" style="background:<?php echo e($pm['dot']); ?>;"></span>
-                        Prioridade <?php echo e($pm['label']); ?>
+                        <span class="w-1.5 h-1.5 rounded-full" style="background:<?php echo e($pm->dot); ?>;"></span>
+                        Prioridade <?php echo e($pm->label); ?>
 
                     </span>
                 </div>
@@ -56,15 +44,14 @@ $pm = $priorityMeta[$idea->priority] ?? $priorityMeta['medium'];
                     <select name="status" onchange="this.form.submit()"
                         class="text-sm rounded-xl border px-3 py-2 focus:ring-0 focus:outline-none"
                         style="background:var(--surface-2); border-color:var(--border-2); color:var(--text);">
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = ['raw','exploring','validated','parked','converted']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <?php $m = $statusMeta[$s]; ?>
-                        <option value="<?php echo e($s); ?>" <?php if($idea->status === $s): echo 'selected'; endif; ?>
-                            style="color:<?php echo e($m['color']); ?>;"><?php echo e($m['label']); ?></option>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $statuses; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <option value="<?php echo e($s->code); ?>" <?php if($idea->status_id === $s->id): echo 'selected'; endif; ?>
+                            style="color:<?php echo e($s->color); ?>;"><?php echo e($s->label); ?></option>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </select>
                 </form>
 
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($idea->status !== 'converted'): ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($idea->status->code !== 'converted'): ?>
                 <form method="POST" action="<?php echo e(route('ideas.convert', $idea)); ?>">
                     <?php echo csrf_field(); ?>
                     <button type="submit"

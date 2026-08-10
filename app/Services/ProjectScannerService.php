@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Project;
-use Illuminate\Support\Facades\Log;
+use App\Models\ProjectStatus;
 use Illuminate\Support\Str;
 
 class ProjectScannerService
@@ -19,53 +19,67 @@ class ProjectScannerService
     {
         $results = [];
 
-        if (!is_dir($this->basePath)) {
+        if (! is_dir($this->basePath)) {
             return ['error' => "Base path not found: {$this->basePath}"];
         }
 
-        $entries = scandir($this->basePath);
-
-        foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..') continue;
-
-            $fullPath = $this->basePath . '/' . $entry;
-
-            if (!is_dir($fullPath)) continue;
-
-            // Skip the project-manager itself
-            if ($entry === 'project-manager') continue;
-
-            $detected = $this->detectProject($fullPath, $entry);
-
-            if ($detected) {
-                $results[] = $detected;
-
-                if (!$dryRun) {
-                    $this->saveProject($detected);
-                }
+        foreach (scandir($this->basePath) as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
             }
+            if ($entry === 'project-manager') {
+                continue;
+            }
+
+            $fullPath = $this->basePath.'/'.$entry;
+            if (! is_dir($fullPath)) {
+                continue;
+            }
+
+            $this->processEntry($fullPath, $entry, $dryRun, $results);
         }
 
         // Also scan docker subdirectory
-        $dockerPath = $this->basePath . '/docker';
+        $dockerPath = $this->basePath.'/docker';
         if (is_dir($dockerPath)) {
-            $dockerEntries = scandir($dockerPath);
-            foreach ($dockerEntries as $entry) {
-                if ($entry === '.' || $entry === '..') continue;
-                $fullPath = $dockerPath . '/' . $entry;
-                if (!is_dir($fullPath)) continue;
-
-                $detected = $this->detectProject($fullPath, "docker/{$entry}");
-                if ($detected) {
-                    $results[] = $detected;
-                    if (!$dryRun) {
-                        $this->saveProject($detected);
-                    }
+            foreach (scandir($dockerPath) as $entry) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
                 }
+
+                $fullPath = $dockerPath.'/'.$entry;
+                if (! is_dir($fullPath)) {
+                    continue;
+                }
+
+                $this->processEntry($fullPath, "docker/{$entry}", $dryRun, $results);
             }
         }
 
         return $results;
+    }
+
+    protected function processEntry(string $fullPath, string $dirName, bool $dryRun, array &$results): void
+    {
+        if (! is_dir($fullPath.'/.git')) {
+            // Não é um repositório git: não importa pastas novas, e remove (soft delete)
+            // qualquer projeto já importado com esse path que ainda não tenha sido removido.
+            if (! $dryRun) {
+                Project::where('path', $dirName)->first()?->delete();
+            }
+
+            return;
+        }
+
+        $detected = $this->detectProject($fullPath, $dirName);
+
+        if ($detected) {
+            $results[] = $detected;
+
+            if (! $dryRun) {
+                $this->saveProject($detected);
+            }
+        }
     }
 
     protected function detectProject(string $path, string $dirName): ?array
@@ -82,35 +96,46 @@ class ProjectScannerService
 
         if (in_array('composer.json', $files)) {
             $detectedFiles[] = 'composer.json';
-            $composerContent = @json_decode(@file_get_contents($path . '/composer.json'), true);
+            $composerContent = @json_decode(@file_get_contents($path.'/composer.json'), true);
             if ($composerContent) {
                 $require = $composerContent['require'] ?? [];
                 if (isset($require['laravel/framework'])) {
-                    if (!in_array('Laravel', $techStack)) $techStack[] = 'Laravel';
+                    if (! in_array('Laravel', $techStack)) {
+                        $techStack[] = 'Laravel';
+                    }
                 }
                 if (isset($require['mongodb/mongodb']) || isset($require['jenssegers/mongodb'])) {
                     $techStack[] = 'MongoDB';
                 }
             }
-            if (!in_array('PHP', $techStack) && !in_array('Laravel', $techStack)) {
+            if (! in_array('PHP', $techStack) && ! in_array('Laravel', $techStack)) {
                 $techStack[] = 'PHP';
             }
         }
 
         if (in_array('package.json', $files)) {
             $detectedFiles[] = 'package.json';
-            $pkgContent = @json_decode(@file_get_contents($path . '/package.json'), true);
+            $pkgContent = @json_decode(@file_get_contents($path.'/package.json'), true);
             if ($pkgContent) {
                 $deps = array_merge(
                     $pkgContent['dependencies'] ?? [],
                     $pkgContent['devDependencies'] ?? []
                 );
-                if (isset($deps['next'])) $techStack[] = 'Next.js';
-                elseif (isset($deps['react'])) $techStack[] = 'React';
-                if (isset($deps['vue'])) $techStack[] = 'Vue.js';
-                if (isset($deps['@angular/core'])) $techStack[] = 'Angular';
+                if (isset($deps['next'])) {
+                    $techStack[] = 'Next.js';
+                } elseif (isset($deps['react'])) {
+                    $techStack[] = 'React';
+                }
+                if (isset($deps['vue'])) {
+                    $techStack[] = 'Vue.js';
+                }
+                if (isset($deps['@angular/core'])) {
+                    $techStack[] = 'Angular';
+                }
                 if (array_key_exists('next', $deps) || array_key_exists('react', $deps) || array_key_exists('vue', $deps)) {
-                    if (!in_array('Node.js', $techStack)) $techStack[] = 'Node.js';
+                    if (! in_array('Node.js', $techStack)) {
+                        $techStack[] = 'Node.js';
+                    }
                 }
             }
         }
@@ -122,19 +147,23 @@ class ProjectScannerService
 
         if (in_array('Dockerfile', $files)) {
             $detectedFiles[] = 'Dockerfile';
-            $dockerContent = @file_get_contents($path . '/Dockerfile');
+            $dockerContent = @file_get_contents($path.'/Dockerfile');
             if ($dockerContent && preg_match('/FROM php:(\d+\.\d+)/i', $dockerContent, $matches)) {
-                if (!in_array('PHP', $techStack) && !in_array('Laravel', $techStack)) {
-                    $techStack[] = 'PHP ' . $matches[1];
+                if (! in_array('PHP', $techStack) && ! in_array('Laravel', $techStack)) {
+                    $techStack[] = 'PHP '.$matches[1];
                 }
             }
-            if (!in_array('Docker', $techStack)) $techStack[] = 'Docker';
+            if (! in_array('Docker', $techStack)) {
+                $techStack[] = 'Docker';
+            }
         }
 
         if (in_array('docker-compose.yml', $files) || in_array('docker-compose.yaml', $files)) {
             $composeName = in_array('docker-compose.yml', $files) ? 'docker-compose.yml' : 'docker-compose.yaml';
             $detectedFiles[] = $composeName;
-            if (!in_array('Docker', $techStack)) $techStack[] = 'Docker';
+            if (! in_array('Docker', $techStack)) {
+                $techStack[] = 'Docker';
+            }
         }
 
         if (empty($techStack)) {
@@ -145,7 +174,7 @@ class ProjectScannerService
 
         return [
             'name' => $humanName,
-            'slug' => Str::slug($humanName . '-' . Str::random(4)),
+            'slug' => Str::slug($humanName.'-'.Str::random(4)),
             'path' => $dirName,
             'tech_stack' => $techStack,
             'detected_files' => $detectedFiles,
@@ -159,11 +188,11 @@ class ProjectScannerService
     protected function readGitInfo(string $path): ?array
     {
         // Check if it's a git repo
-        if (!is_dir($path . '/.git')) {
+        if (! is_dir($path.'/.git')) {
             return null;
         }
 
-        $git = fn(string $cmd) => trim(shell_exec("git -c safe.directory='*' -C " . escapeshellarg($path) . " $cmd 2>/dev/null") ?? '');
+        $git = fn (string $cmd) => trim(shell_exec("git -c safe.directory='*' -C ".escapeshellarg($path)." $cmd 2>/dev/null") ?? '');
 
         $branch = $git('rev-parse --abbrev-ref HEAD');
         if (empty($branch) || $branch === 'HEAD') {
@@ -177,32 +206,40 @@ class ProjectScannerService
         $commits = [];
         foreach (explode("\n", $logRaw) as $line) {
             $line = trim($line);
-            if (empty($line)) continue;
+            if (empty($line)) {
+                continue;
+            }
             $parts = explode('|', $line, 4);
-            if (count($parts) < 4) continue;
+            if (count($parts) < 4) {
+                continue;
+            }
             $commits[] = [
-                'hash'    => $parts[0],
+                'hash' => $parts[0],
                 'message' => $parts[1],
-                'author'  => $parts[2],
-                'date'    => $parts[3],
+                'author' => $parts[2],
+                'date' => $parts[3],
             ];
         }
 
         return [
-            'branch'        => $branch,
+            'branch' => $branch,
             'total_commits' => $totalCommits,
-            'commits'       => $commits,
+            'commits' => $commits,
         ];
     }
 
     protected function guessStatus(array $files, string $path): string
     {
         // Check for signs of archived/incomplete projects
-        if (in_array('.archived', $files)) return 'archived';
+        if (in_array('.archived', $files)) {
+            return 'archived';
+        }
 
         // Check if project has very few files (incomplete)
-        $realFiles = array_filter($files, fn($f) => !in_array($f, ['.', '..', '.git', '.gitignore']));
-        if (count($realFiles) <= 3) return 'idea';
+        $realFiles = array_filter($files, fn ($f) => ! in_array($f, ['.', '..', '.git', '.gitignore']));
+        if (count($realFiles) <= 3) {
+            return 'idea';
+        }
 
         return 'in-progress';
     }
@@ -213,22 +250,29 @@ class ProjectScannerService
         $name = preg_replace('/([a-z])([A-Z])/', '$1 $2', $dirName);
         // Convert underscores and hyphens to spaces
         $name = str_replace(['_', '-'], ' ', $name);
+
         // Title case
         return ucwords(strtolower($name));
     }
 
     protected function saveProject(array $data): Project
     {
-        $existing = Project::where('path', $data['path'])->first();
+        $existing = Project::withTrashed()->where('path', $data['path'])->first();
+
+        if ($existing && $existing->trashed()) {
+            // Removido manualmente pelo usuário — nunca mais recriar ou tocar.
+            return $existing;
+        }
 
         if ($existing) {
             $existing->update([
-                'tech_stack'      => $data['tech_stack'],
-                'detected_files'  => $data['detected_files'],
-                'git_info'        => $data['git_info'],
-                'is_scanned'      => true,
+                'tech_stack' => $data['tech_stack'],
+                'detected_files' => $data['detected_files'],
+                'git_info' => $data['git_info'],
+                'is_scanned' => true,
                 'last_scanned_at' => now(),
             ]);
+
             return $existing;
         }
 
@@ -237,18 +281,18 @@ class ProjectScannerService
         $originalSlug = $slug;
         $i = 1;
         while (Project::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $i++;
+            $slug = $originalSlug.'-'.$i++;
         }
 
         return Project::create([
-            'name'            => $data['name'],
-            'slug'            => $slug,
-            'path'            => $data['path'],
-            'tech_stack'      => $data['tech_stack'],
-            'detected_files'  => $data['detected_files'],
-            'git_info'        => $data['git_info'],
-            'status'          => $data['status'],
-            'is_scanned'      => true,
+            'name' => $data['name'],
+            'slug' => $slug,
+            'path' => $data['path'],
+            'tech_stack' => $data['tech_stack'],
+            'detected_files' => $data['detected_files'],
+            'git_info' => $data['git_info'],
+            'status_id' => ProjectStatus::where('code', $data['status'])->value('id'),
+            'is_scanned' => true,
             'last_scanned_at' => now(),
         ]);
     }

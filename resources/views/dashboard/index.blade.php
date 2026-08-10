@@ -3,155 +3,309 @@
 @section('breadcrumb', 'Painel')
 @section('content')
 @php
-$statusMeta = [
-    'idea'        => ['label'=>'Ideia',       'color'=>'#94a3b8','bg'=>'rgba(148,163,184,.12)'],
-    'planning'    => ['label'=>'Planejamento','color'=>'#60a5fa','bg'=>'rgba(96,165,250,.13)'],
-    'in-progress' => ['label'=>'Em Andamento','color'=>'#a5b4fc','bg'=>'rgba(165,180,252,.13)'],
-    'paused'      => ['label'=>'Pausado',     'color'=>'#fcd34d','bg'=>'rgba(252,211,77,.12)'],
-    'done'        => ['label'=>'Concluído',   'color'=>'#6ee7b7','bg'=>'rgba(110,231,183,.12)'],
-    'archived'    => ['label'=>'Arquivado',   'color'=>'#fca5a5','bg'=>'rgba(252,165,165,.12)'],
-];
-$statusBars = [
-    'idea'=>'#64748b','planning'=>'#3b82f6','in-progress'=>'#6366f1',
-    'paused'=>'#f59e0b','done'=>'#10b981','archived'=>'#ef4444',
-];
+$total = $statusCounts->sum('count');
+$cumulative = 0;
+$ringStops = $statusCounts->map(function ($entry) use ($total, &$cumulative) {
+    $pct = $total > 0 ? ($entry->count / $total) * 100 : 0;
+    $from = $cumulative;
+    $cumulative += $pct;
+    return "{$entry->status->color} {$from}% {$cumulative}%";
+})->implode(', ');
+
+$paletteItems = collect([
+    ['group' => 'Ações', 'icon' => 'action', 'label' => 'Escanear Projetos', 'hint' => 'ir para Projetos', 'url' => route('projects.index')],
+    ['group' => 'Ações', 'icon' => 'action', 'label' => 'Nova Ideia', 'hint' => 'ir para Ideias', 'url' => route('ideas.index')],
+])
+    ->merge($paletteProjects->map(fn ($p) => ['group' => 'Projetos', 'icon' => 'project', 'label' => $p['label'], 'hint' => 'abrir', 'url' => $p['url']]))
+    ->merge($paletteIdeas->map(fn ($i) => ['group' => 'Ideias', 'icon' => 'idea', 'label' => $i['label'], 'hint' => 'abrir', 'url' => $i['url']]))
+    ->values();
 @endphp
 
-<div class="space-y-8 max-w-7xl">
+<div class="space-y-6">
 
     {{-- Page header --}}
-    <div>
+    <div class="flex items-baseline justify-between gap-4 flex-wrap">
         <h1 class="text-2xl font-semibold text-white tracking-tight">Bom trabalho</h1>
-        <p class="text-sm mt-1" style="color:var(--muted-1);">Visao geral dos seus projetos e ideias.</p>
     </div>
+    <p class="text-sm -mt-4" style="color:var(--muted-1);">
+        Visão geral dos seus projetos e ideias. Pressione
+        <span class="font-medium" style="font-family:var(--font-mono); color:var(--muted-2);">⌘K</span>
+        para buscar rápido.
+    </p>
 
-    {{-- Stat cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        @php
-        $cards = [
-            ['value'=>$stats['total_projects'], 'label'=>'Total de Projetos', 'accent'=>'#6366f1', 'glow'=>'rgba(99,102,241,.2)',
-             'icon'=>'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7a2 2 0 012-2h3l2 2h9a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>'],
-            ['value'=>$stats['in_progress'],    'label'=>'Em Andamento',      'accent'=>'#818cf8', 'glow'=>'rgba(129,140,248,.2)',
-             'icon'=>'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/>'],
-            ['value'=>$stats['done'],           'label'=>'Concluidos',        'accent'=>'#34d399', 'glow'=>'rgba(52,211,153,.2)',
-             'icon'=>'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>'],
-            ['value'=>$stats['ideas'],          'label'=>'Ideias',            'accent'=>'#fbbf24', 'glow'=>'rgba(251,191,36,.2)',
-             'icon'=>'<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.347A5.002 5.002 0 0112 21a5.002 5.002 0 01-4.657-3.153l-.347-.347z"/>'],
-        ];
-        @endphp
-        @foreach($cards as $card)
-        <div class="rounded-2xl p-5 border" style="background:var(--surface); border-color:var(--border);">
-            <div class="flex items-start justify-between mb-5">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style="background:{{ $card['glow'] }}; border:1px solid {{ $card['accent'] }}22;">
-                    <svg class="w-5 h-5" style="color:{{ $card['accent'] }};" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {!! $card['icon'] !!}
-                    </svg>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-[minmax(88px,auto)]">
+
+        {{-- Hero: Em Andamento --}}
+        <div class="sm:col-span-2 lg:row-span-2 rounded-2xl p-6 border flex flex-col" style="background:var(--surface); border-color:var(--border);">
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style="color:var(--muted-2);">
+                <svg class="w-3.5 h-3.5" style="color:#818cf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Em Andamento
+            </div>
+            <div class="text-5xl font-medium mt-3" style="font-family:var(--font-mono); color:white; font-variant-numeric:tabular-nums;">{{ $stats['in_progress'] }}</div>
+            <div class="text-sm mt-1 mb-5" style="color:var(--muted-1);">projetos ativos agora</div>
+            <div class="space-y-2.5 mt-auto max-w-sm">
+                @forelse($activeProjects as $p)
+                <a href="{{ route('projects.show', $p) }}" class="flex items-center gap-2.5 text-sm hover:opacity-80 transition-opacity">
+                    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:{{ $p->status->color }};"></span>
+                    <span class="flex-1 min-w-0 truncate" style="color:var(--text);">{{ $p->name }}</span>
+                    <span class="tabular-nums flex-shrink-0" style="font-family:var(--font-mono); font-size:.75rem; color:var(--muted-2);">{{ $p->progress }}%</span>
+                </a>
+                @empty
+                <p class="text-sm" style="color:var(--muted-3);">Nenhum projeto em andamento.</p>
+                @endforelse
+            </div>
+        </div>
+
+        {{-- Distribuição por status (ring) --}}
+        <div class="sm:col-span-2 lg:row-span-2 rounded-2xl p-6 border" style="background:var(--surface); border-color:var(--border);">
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-4" style="color:var(--muted-2);">
+                <svg class="w-3.5 h-3.5" style="color:#818cf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Distribuição por Status
+            </div>
+            @if($statusCounts->isEmpty())
+            <p class="text-sm" style="color:var(--muted-3);">Sem projetos ainda.</p>
+            @else
+            <div class="flex items-center gap-6 max-w-xs">
+                <div class="w-28 h-28 rounded-full flex items-center justify-center flex-shrink-0"
+                    style="background: conic-gradient({{ $ringStops }});">
+                    <div class="w-[74px] h-[74px] rounded-full flex flex-col items-center justify-center" style="background:var(--surface);">
+                        <span class="text-xl font-semibold" style="font-family:var(--font-mono); color:white;">{{ $total }}</span>
+                        <span class="text-[10px]" style="color:var(--muted-2);">total</span>
+                    </div>
+                </div>
+                <div class="flex-1 min-w-0 space-y-1.5">
+                    @foreach($statusCounts as $entry)
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:{{ $entry->status->color }};"></span>
+                        <span class="flex-1" style="color:var(--text);">{{ $entry->status->label }}</span>
+                        <span class="tabular-nums" style="font-family:var(--font-mono); color:var(--muted-2);">{{ $entry->count }}</span>
+                    </div>
+                    @endforeach
                 </div>
             </div>
-            <div class="text-3xl font-bold text-white tabular-nums">{{ $card['value'] }}</div>
-            <div class="text-sm mt-1" style="color:var(--muted-1);">{{ $card['label'] }}</div>
+            @endif
         </div>
-        @endforeach
-    </div>
 
-    {{-- Status breakdown --}}
-    @if($statusCounts->isNotEmpty())
-    @php $total = $statusCounts->sum(); @endphp
-    <div class="rounded-2xl p-5 border" style="background:var(--surface); border-color:var(--border);">
-        <div class="flex items-center justify-between mb-5">
-            <h3 class="text-sm font-semibold text-white">Distribuicao por Status</h3>
-            <span class="text-xs" style="color:var(--muted-2);">{{ $total }} projetos</span>
+        {{-- Small stat tiles --}}
+        <div class="rounded-2xl p-5 border flex flex-col justify-center" style="background:var(--surface); border-color:var(--border);">
+            <div class="text-2xl font-medium" style="font-family:var(--font-mono); color:white;">{{ $stats['total_projects'] }}</div>
+            <div class="text-sm mt-0.5" style="color:var(--muted-1);">Total de Projetos</div>
         </div>
-        <div class="flex h-2 rounded-full overflow-hidden gap-px mb-5" style="background:var(--border);">
-            @foreach($statusCounts as $status => $count)
-            @php $pct = $total > 0 ? round(($count/$total)*100) : 0; @endphp
-            <div class="h-full transition-all rounded-sm" style="width:{{ $pct }}%; background:{{ $statusBars[$status] ?? '#64748b' }};"></div>
-            @endforeach
+        <div class="rounded-2xl p-5 border flex flex-col justify-center" style="background:var(--surface); border-color:var(--border);">
+            <div class="text-2xl font-medium" style="font-family:var(--font-mono); color:white;">{{ $stats['done'] }}</div>
+            <div class="text-sm mt-0.5" style="color:var(--muted-1);">Concluídos</div>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-            @foreach($statusCounts as $status => $count)
-            @php $m = $statusMeta[$status] ?? ['label'=>$status,'color'=>'#94a3b8','bg'=>'rgba(148,163,184,.1)']; @endphp
-            <div class="flex items-center justify-between px-3 py-2 rounded-lg" style="background:{{ $m['bg'] }};">
-                <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:{{ $m['color'] }};"></span>
-                    <span class="text-xs font-medium" style="color:{{ $m['color'] }};">{{ $m['label'] }}</span>
-                </div>
-                <span class="text-xs font-bold text-white">{{ $count }}</span>
-            </div>
-            @endforeach
-        </div>
-    </div>
-    @endif
 
-    {{-- Recent projects --}}
-    <div>
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-base font-semibold text-white">Projetos Recentes</h3>
-            <a href="{{ route('projects.index') }}" class="text-xs font-medium hover:opacity-80 transition-opacity" style="color:#818cf8;">
-                Ver todos &rarr;
-            </a>
-        </div>
-        @if($recentProjects->isEmpty())
-        <div class="rounded-2xl border border-dashed py-14 text-center" style="border-color:var(--border-2);">
-            <div class="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
-                style="background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.2);">
-                <svg class="w-6 h-6" style="color:#6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7a2 2 0 012-2h3l2 2h9a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+        {{-- Command palette launcher tile --}}
+        <button type="button" id="paletteTile"
+            class="sm:col-span-2 rounded-2xl p-5 border border-dashed flex items-center justify-center gap-3 transition-colors"
+            style="border-color:var(--border-2); color:var(--muted-1);"
+            onmouseover="this.style.borderColor='#6366f1'; this.style.background='rgba(99,102,241,.05)';"
+            onmouseout="this.style.borderColor='var(--border-2)'; this.style.background='transparent';">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,.15); color:#a5b4fc;">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
                 </svg>
             </div>
-            <p class="text-sm font-medium text-white mb-1">Nenhum projeto ainda</p>
-            <p class="text-xs mb-4" style="color:var(--muted-1);">Escaneie a pasta de projetos para comecar.</p>
-            <form method="POST" action="{{ route('projects.scan') }}" class="inline">
-                @csrf
-                <button type="submit" class="text-xs font-medium px-4 py-2 rounded-lg text-white"
-                    style="background:rgba(99,102,241,.2); border:1px solid rgba(99,102,241,.3);">
-                    Escanear agora
-                </button>
-            </form>
-        </div>
-        @else
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            @foreach($recentProjects as $project)
-            @include('projects._card', ['project' => $project])
-            @endforeach
-        </div>
-        @endif
-    </div>
+            <span class="text-sm font-medium" style="color:var(--text);">Busca rápida</span>
+            <span class="flex gap-1 ml-1">
+                <kbd class="text-xs px-1.5 py-0.5 rounded" style="font-family:var(--font-mono); background:var(--surface-3); border:1px solid var(--border-2); color:var(--muted-1);">⌘</kbd>
+                <kbd class="text-xs px-1.5 py-0.5 rounded" style="font-family:var(--font-mono); background:var(--surface-3); border:1px solid var(--border-2); color:var(--muted-1);">K</kbd>
+            </span>
+        </button>
 
-    {{-- Recent ideas --}}
-    @if($recentIdeas->isNotEmpty())
-    <div>
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-base font-semibold text-white">Ideias Recentes</h3>
-            <a href="{{ route('ideas.index') }}" class="text-xs font-medium hover:opacity-80 transition-opacity" style="color:#818cf8;">
-                Ver todas &rarr;
-            </a>
-        </div>
-        <div class="rounded-2xl border overflow-hidden" style="background:var(--surface); border-color:var(--border);">
-            @foreach($recentIdeas as $i => $idea)
-            @php
-                $pMeta = ['low'=>['label'=>'Baixa','dot'=>'#64748b'],'medium'=>['label'=>'Media','dot'=>'#f59e0b'],'high'=>['label'=>'Alta','dot'=>'#ef4444']];
-                $pm = $pMeta[$idea->priority] ?? $pMeta['medium'];
-                $sm = $statusMeta[$idea->status] ?? ['label'=>$idea->status,'color'=>'#94a3b8','bg'=>'rgba(148,163,184,.1)'];
-            @endphp
-            <a href="{{ route('ideas.show', $idea) }}"
-                class="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[.025] transition-colors {{ $i > 0 ? 'border-t' : '' }}"
-                style="{{ $i > 0 ? 'border-color:var(--border);' : '' }}">
-                <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:{{ $pm['dot'] }};"></div>
-                <div class="flex-1 min-w-0">
-                    <span class="text-sm font-medium text-white">{{ $idea->title }}</span>
-                    @if($idea->description)
-                    <span class="text-xs ml-2" style="color:var(--muted-1);">{{ Str::limit($idea->description, 60) }}</span>
-                    @endif
+        {{-- Projetos Recentes --}}
+        <div class="sm:col-span-2 lg:col-span-3 lg:row-span-2 rounded-2xl p-6 border" style="background:var(--surface); border-color:var(--border);">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style="color:var(--muted-2);">
+                    <svg class="w-3.5 h-3.5" style="color:#818cf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7a2 2 0 012-2h3l2 2h9a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+                    </svg>
+                    Projetos Recentes
                 </div>
-                <span class="text-xs px-2 py-1 rounded-md font-medium flex-shrink-0"
-                    style="background:{{ $sm['bg'] }}; color:{{ $sm['color'] }};">{{ $sm['label'] }}</span>
-            </a>
-            @endforeach
+                <a href="{{ route('projects.index') }}" class="text-xs font-medium hover:opacity-80 transition-opacity" style="color:#818cf8;">Ver todos &rarr;</a>
+            </div>
+            @if($recentProjects->isEmpty())
+            <div class="rounded-2xl border border-dashed py-10 text-center" style="border-color:var(--border-2);">
+                <p class="text-sm font-medium text-white mb-1">Nenhum projeto ainda</p>
+                <p class="text-xs mb-4" style="color:var(--muted-1);">Escaneie a pasta de projetos para comecar.</p>
+                <div class="inline-block">
+                    <livewire:scanner-status />
+                </div>
+            </div>
+            @else
+            <div class="flex gap-3 overflow-x-auto pb-1">
+                @foreach($recentProjects as $project)
+                <a href="{{ route('projects.show', $project) }}"
+                    class="flex-shrink-0 w-52 rounded-xl p-3.5 border hover:border-indigo-500/40 transition-colors"
+                    style="background:var(--surface-2); border-color:var(--border);">
+                    <div class="text-sm font-semibold truncate mb-2" style="color:white;">{{ $project->name }}</div>
+                    <span class="text-[11px] px-1.5 py-0.5 rounded font-medium"
+                        style="background:{{ $project->status->bg }}; color:{{ $project->status->color }};">{{ $project->status->label }}</span>
+                    <div class="flex items-center justify-between mt-3">
+                        <span class="text-[11px]" style="color:var(--muted-2);">progresso</span>
+                        <div class="w-7 h-7 rounded-full flex items-center justify-center"
+                            style="background: conic-gradient({{ $project->status->color }} {{ $project->progress * 3.6 }}deg, var(--border-2) 0deg);">
+                            <div class="w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px]" style="font-family:var(--font-mono); background:var(--surface-2); color:var(--muted-1);">{{ $project->progress }}</div>
+                        </div>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+            @endif
+        </div>
+
+        {{-- Ideias Recentes --}}
+        <div class="sm:col-span-2 lg:col-span-1 lg:row-span-2 rounded-2xl p-6 border" style="background:var(--surface); border-color:var(--border);">
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-4" style="color:var(--muted-2);">
+                <svg class="w-3.5 h-3.5" style="color:#818cf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.347A5.002 5.002 0 0112 21a5.002 5.002 0 01-4.657-3.153l-.347-.347z"/>
+                </svg>
+                Ideias
+            </div>
+            @if($recentIdeas->isEmpty())
+            <p class="text-sm" style="color:var(--muted-3);">Nenhuma ideia ainda.</p>
+            @else
+            <div class="space-y-1">
+                @foreach($recentIdeas as $idea)
+                <a href="{{ route('ideas.show', $idea) }}" class="flex items-start gap-2.5 p-2 rounded-lg hover:bg-white/[.03] transition-colors">
+                    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style="background:{{ $idea->priority->dot }};"></span>
+                    <div class="min-w-0">
+                        <div class="text-sm leading-snug truncate" style="color:var(--text);">{{ $idea->title }}</div>
+                        <span class="text-[11px] px-1.5 py-0.5 rounded font-medium inline-block mt-1"
+                            style="background:{{ $idea->status->bg }}; color:{{ $idea->status->color }};">{{ $idea->status->label }}</span>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+            @endif
         </div>
     </div>
-    @endif
-
 </div>
+
+{{-- Command palette (⌘K) --}}
+<div id="cmdkBackdrop" class="fixed inset-0 z-50 flex items-start justify-center opacity-0 pointer-events-none transition-opacity"
+    style="background:rgba(6,9,16,.6); backdrop-filter:blur(3px); padding-top:12vh;">
+    <div id="cmdkPanel" class="w-full max-w-lg mx-4 rounded-2xl border overflow-hidden transition-transform"
+        style="background:var(--surface); border-color:var(--border-2); box-shadow:0 24px 60px rgba(0,0,0,.5); transform:translateY(-8px) scale(.98);">
+        <div class="flex items-center gap-2.5 px-4 py-3.5 border-b" style="border-color:var(--border);">
+            <svg class="w-4 h-4 flex-shrink-0" style="color:var(--muted-2);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
+            </svg>
+            <input id="cmdkInput" type="text" autocomplete="off" spellcheck="false"
+                placeholder="Buscar projetos, ideias ou uma ação…"
+                class="flex-1 bg-transparent border-0 outline-none text-sm" style="color:white;">
+            <kbd class="text-xs px-1.5 py-0.5 rounded flex-shrink-0" style="font-family:var(--font-mono); background:var(--surface-3); border:1px solid var(--border-2); color:var(--muted-2);">Esc</kbd>
+        </div>
+        <div id="cmdkResults" class="max-h-80 overflow-y-auto p-2"></div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+(function () {
+    var ICONS = {
+        action: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/>',
+        project: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7a2 2 0 012-2h3l2 2h9a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>',
+        idea: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.347A5.002 5.002 0 0112 21a5.002 5.002 0 01-4.657-3.153l-.347-.347z"/>'
+    };
+
+    var ITEMS = @json($paletteItems);
+
+    var backdrop = document.getElementById('cmdkBackdrop');
+    var panel = document.getElementById('cmdkPanel');
+    var input = document.getElementById('cmdkInput');
+    var results = document.getElementById('cmdkResults');
+    var activeIndex = 0;
+    var visible = [];
+
+    function escapeHtml(s) {
+        return String(s || '').replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function render(query) {
+        var q = (query || '').toLowerCase().trim();
+        visible = ITEMS.filter(function (it) { return it.label.toLowerCase().indexOf(q) !== -1; });
+        activeIndex = 0;
+
+        if (!visible.length) {
+            results.innerHTML = '<div class="text-center py-6 text-sm" style="color:var(--muted-2);">Nada encontrado.</div>';
+            return;
+        }
+
+        var html = '';
+        var lastGroup = null;
+        visible.forEach(function (it, i) {
+            if (it.group !== lastGroup) {
+                html += '<div class="text-[10px] font-bold uppercase tracking-wider px-2.5 pt-2 pb-1" style="color:var(--muted-3);">' + it.group + '</div>';
+                lastGroup = it.group;
+            }
+            html += '<div class="cmdk-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-sm' + (i === activeIndex ? ' active' : '') + '" data-i="' + i + '" style="' + (i === activeIndex ? 'background:rgba(99,102,241,.14);' : '') + ' color:var(--text);">' +
+                '<svg class="w-3.5 h-3.5 flex-shrink-0" style="color:var(--muted-2);" fill="none" stroke="currentColor" viewBox="0 0 24 24">' + ICONS[it.icon] + '</svg>' +
+                '<span class="flex-1 truncate">' + escapeHtml(it.label) + '</span>' +
+                '<span class="text-xs flex-shrink-0" style="color:var(--muted-3);">' + escapeHtml(it.hint) + '</span>' +
+            '</div>';
+        });
+        results.innerHTML = html;
+    }
+
+    function highlight() {
+        Array.prototype.forEach.call(results.querySelectorAll('.cmdk-item'), function (el) {
+            var isActive = Number(el.dataset.i) === activeIndex;
+            el.style.background = isActive ? 'rgba(99,102,241,.14)' : '';
+        });
+        var activeEl = results.querySelector('.cmdk-item[data-i="' + activeIndex + '"]');
+        if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+    }
+
+    function open() {
+        backdrop.classList.remove('opacity-0', 'pointer-events-none');
+        panel.style.transform = 'translateY(0) scale(1)';
+        input.value = '';
+        render('');
+        setTimeout(function () { input.focus(); }, 20);
+    }
+
+    function close() {
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        panel.style.transform = 'translateY(-8px) scale(.98)';
+    }
+
+    function select() {
+        var item = visible[activeIndex];
+        if (!item) return;
+        window.location.href = item.url;
+    }
+
+    document.getElementById('paletteTile').addEventListener('click', open);
+    backdrop.addEventListener('click', function (e) { if (e.target === backdrop) close(); });
+    input.addEventListener('input', function () { render(input.value); });
+    results.addEventListener('click', function (e) {
+        var item = e.target.closest('.cmdk-item');
+        if (!item) return;
+        activeIndex = Number(item.dataset.i);
+        select();
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            backdrop.classList.contains('opacity-0') ? open() : close();
+            return;
+        }
+        if (backdrop.classList.contains('opacity-0')) return;
+        if (e.key === 'Escape') { close(); return; }
+        if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex = Math.min(activeIndex + 1, visible.length - 1); highlight(); }
+        if (e.key === 'ArrowUp') { e.preventDefault(); activeIndex = Math.max(activeIndex - 1, 0); highlight(); }
+        if (e.key === 'Enter') { e.preventDefault(); select(); }
+    });
+})();
+</script>
+@endpush
 @endsection

@@ -11,11 +11,17 @@ use Livewire\Component;
 class AnnotationEditor extends Component
 {
     public string $annotatableType;
+
     public int $annotatableId;
+
     public string $title = '';
+
     public string $content = '';
+
     public string $color = '';
+
     public bool $showForm = false;
+
     public ?int $editingId = null;
 
     public function mount(string $annotatableType, int $annotatableId): void
@@ -72,13 +78,14 @@ class AnnotationEditor extends Component
     public function pin(int $id): void
     {
         $annotation = Annotation::findOrFail($id);
-        $annotation->update(['pinned' => !$annotation->pinned]);
+        $annotation->update(['pinned' => ! $annotation->pinned]);
         $this->dispatch('annotation-saved');
     }
 
     public function renderMarkdown(string $content): string
     {
         $converter = new CommonMarkConverter(['html_input' => 'strip', 'allow_unsafe_links' => false]);
+
         return $converter->convert($content)->getContent();
     }
 

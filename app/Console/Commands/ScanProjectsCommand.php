@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class ScanProjectsCommand extends Command
 {
     protected $signature = 'projects:scan {--dry-run : List projects without saving}';
+
     protected $description = 'Scan the host projects directory and import projects';
 
     public function handle(ProjectScannerService $scanner): int
@@ -20,17 +21,18 @@ class ScanProjectsCommand extends Command
 
         if (isset($results['error'])) {
             $this->error($results['error']);
+
             return Command::FAILURE;
         }
 
-        $this->table(['Name', 'Path', 'Stack', 'Status'], array_map(fn($p) => [
+        $this->table(['Name', 'Path', 'Stack', 'Status'], array_map(fn ($p) => [
             $p['name'],
             $p['path'],
             implode(', ', $p['tech_stack']),
             $p['status'],
         ], $results));
 
-        $this->info(count($results) . ' projects ' . ($dryRun ? 'found' : 'imported') . '.');
+        $this->info(count($results).' projects '.($dryRun ? 'found' : 'imported').'.');
 
         return Command::SUCCESS;
     }
