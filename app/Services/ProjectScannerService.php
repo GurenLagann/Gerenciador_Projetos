@@ -18,6 +18,7 @@ class ProjectScannerService
     public function scan(bool $dryRun = false): array
     {
         $results = [];
+        $visitedPaths = [];
 
         if (! is_dir($this->basePath)) {
             return ['error' => "Base path not found: {$this->basePath}"];
@@ -36,6 +37,7 @@ class ProjectScannerService
                 continue;
             }
 
+            $visitedPaths[] = $entry;
             $this->processEntry($fullPath, $entry, $dryRun, $results);
         }
 
@@ -52,8 +54,13 @@ class ProjectScannerService
                     continue;
                 }
 
+                $visitedPaths[] = "docker/{$entry}";
                 $this->processEntry($fullPath, "docker/{$entry}", $dryRun, $results);
             }
+        }
+
+        if (! $dryRun) {
+            $this->removeStaleProjects($visitedPaths);
         }
 
         return $results;
@@ -80,6 +87,22 @@ class ProjectScannerService
                 $this->saveProject($detected);
             }
         }
+    }
+
+    /**
+     * Soft-deletes previously scanned projects whose directory disappeared
+     * from the host entirely (renamed or removed) rather than just losing
+     * its .git folder — those never pass through processEntry() above,
+     * since scandir() no longer sees them at all.
+     *
+     * @param  array<int, string>  $visitedPaths
+     */
+    protected function removeStaleProjects(array $visitedPaths): void
+    {
+        Project::where('is_scanned', true)
+            ->whereNotIn('path', $visitedPaths)
+            ->get()
+            ->each(fn (Project $project) => $project->delete());
     }
 
     protected function detectProject(string $path, string $dirName): ?array
@@ -136,6 +159,15 @@ class ProjectScannerService
                     if (! in_array('Node.js', $techStack)) {
                         $techStack[] = 'Node.js';
                     }
+                }
+            }
+        }
+
+        foreach (['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile'] as $pythonFile) {
+            if (in_array($pythonFile, $files)) {
+                $detectedFiles[] = $pythonFile;
+                if (! in_array('Python', $techStack)) {
+                    $techStack[] = 'Python';
                 }
             }
         }

@@ -117,4 +117,30 @@ class ProjectScannerServiceDetectionTest extends TestCase
         $this->assertSame('Next.js 14.2.0', $results[0]['framework_version']);
         $this->assertSame('PostgreSQL', $results[0]['database_engine']);
     }
+
+    public function test_it_detects_python_projects_from_requirements_txt(): void
+    {
+        $this->makeFakeProject('FakePythonApp', [
+            'requirements.txt' => "requests==2.31.0\n",
+        ]);
+
+        $this->overrideScanBasePath($this->basePath);
+        $results = (new ProjectScannerService)->scan(dryRun: true);
+
+        $this->assertContains('Python', $results[0]['tech_stack']);
+        $this->assertContains('requirements.txt', $results[0]['detected_files']);
+    }
+
+    public function test_it_detects_python_projects_from_pyproject_toml(): void
+    {
+        $this->makeFakeProject('FakePyprojectApp', [
+            'pyproject.toml' => "[project]\nname = \"fake\"\n",
+        ]);
+
+        $this->overrideScanBasePath($this->basePath);
+        $results = (new ProjectScannerService)->scan(dryRun: true);
+
+        $this->assertContains('Python', $results[0]['tech_stack']);
+        $this->assertContains('pyproject.toml', $results[0]['detected_files']);
+    }
 }
