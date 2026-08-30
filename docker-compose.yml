@@ -14,6 +14,11 @@ services:
     networks:
       - pm_network
       - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pm.rule=Host(`pm.local`)"
+      - "traefik.http.routers.pm.entrypoints=web"
+      - "traefik.http.services.pm.loadbalancer.server.port=80"
 
   php:
     build:
@@ -28,8 +33,51 @@ services:
     networks:
       - pm_network
 
+  queue-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pm_queue_worker
+    restart: unless-stopped
+    working_dir: /var/www
+    command: php artisan queue:work --sleep=3 --tries=3
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - ollama
+      - qdrant
+    networks:
+      - pm_network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pm_ollama
+    restart: unless-stopped
+    environment:
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - pm_network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: pm_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - pm_network
+
 networks:
   pm_network:
     driver: bridge
   traefik-net:
     external: true
+
+volumes:
+  ollama_data:
+  qdrant_data:

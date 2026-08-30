@@ -178,11 +178,172 @@ class ProjectScannerService
             'path' => $dirName,
             'tech_stack' => $techStack,
             'detected_files' => $detectedFiles,
+            'runtime_version' => $this->detectRuntimeVersion($path, $files),
+            'framework_version' => $this->detectFrameworkVersion($path, $files),
+            'database_engine' => $this->detectDatabaseEngine($path, $files),
             'git_info' => $this->readGitInfo($path),
             'is_scanned' => true,
             'last_scanned_at' => now(),
             'status' => $this->guessStatus($files, $path),
         ];
+    }
+
+    /**
+     * Best-effort detection of the language/runtime version (e.g. "PHP 8.4",
+     * "Node 20"). Prefers the Dockerfile actually used to build/run the
+     * project (most accurate, reflects what's really deployed) over the
+     * composer.json/package.json version constraint (a declared range, not
+     * necessarily what's running).
+     */
+    protected function detectRuntimeVersion(string $path, array $files): ?string
+    {
+        foreach ($this->candidateDockerfiles($path, $files) as $dockerfilePath) {
+            $content = @file_get_contents($dockerfilePath);
+            if (! $content) {
+                continue;
+            }
+
+            if (preg_match('/FROM\s+php:(\d+\.\d+)/i', $content, $matches)) {
+                return 'PHP '.$matches[1];
+            }
+
+            if (preg_match('/FROM\s+node:(\d+(?:\.\d+)?)/i', $content, $matches)) {
+                return 'Node '.$matches[1];
+            }
+        }
+
+        if (in_array('composer.json', $files)) {
+            $constraint = $this->readJson($path.'/composer.json')['require']['php'] ?? null;
+            if ($constraint) {
+                return 'PHP '.ltrim($constraint, '^~>=');
+            }
+        }
+
+        if (in_array('package.json', $files)) {
+            $constraint = $this->readJson($path.'/package.json')['engines']['node'] ?? null;
+            if ($constraint) {
+                return 'Node '.ltrim($constraint, '^~>=');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Best-effort detection of the main framework version (e.g. "Laravel
+     * 13.3.0", "Next.js 14.2.0"). Prefers the lock file's pinned version
+     * (what's actually installed) over the composer.json/package.json
+     * declared constraint (a range).
+     */
+    protected function detectFrameworkVersion(string $path, array $files): ?string
+    {
+        if (in_array('composer.lock', $files)) {
+            $lock = $this->readJson($path.'/composer.lock');
+            foreach ($lock['packages'] ?? [] as $package) {
+                if (($package['name'] ?? null) === 'laravel/framework') {
+                    return 'Laravel '.ltrim((string) ($package['version'] ?? ''), 'v');
+                }
+            }
+        }
+
+        if (in_array('composer.json', $files)) {
+            $constraint = $this->readJson($path.'/composer.json')['require']['laravel/framework'] ?? null;
+            if ($constraint) {
+                return 'Laravel '.ltrim($constraint, '^~>=');
+            }
+        }
+
+        if (in_array('package.json', $files)) {
+            $deps = $this->readJson($path.'/package.json');
+            $deps = array_merge($deps['dependencies'] ?? [], $deps['devDependencies'] ?? []);
+            if (isset($deps['next'])) {
+                return 'Next.js '.ltrim($deps['next'], '^~>=');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Best-effort detection of the database engine. Checks the project's
+     * own .env first (most accurate), falls back to docker-compose.yml
+     * service images, and finally assumes SQLite for PHP/Laravel projects
+     * with no other signal (Laravel's own default).
+     */
+    protected function detectDatabaseEngine(string $path, array $files): ?string
+    {
+        if (in_array('.env', $files)) {
+            $env = @file_get_contents($path.'/.env');
+            if ($env && preg_match('/^DB_CONNECTION=(.+)$/m', $env, $matches)) {
+                $label = match (strtolower(trim($matches[1]))) {
+                    'sqlite' => 'SQLite',
+                    'mysql' => 'MySQL',
+                    'pgsql' => 'PostgreSQL',
+                    'mariadb' => 'MariaDB',
+                    'mongodb' => 'MongoDB',
+                    default => ucfirst(trim($matches[1])),
+                };
+
+                if (in_array($label, ['MySQL', 'PostgreSQL', 'MariaDB'])
+                    && preg_match('/^DB_DATABASE=(.+)$/m', $env, $dbMatches)
+                    && trim($dbMatches[1]) !== '') {
+                    return "{$label} (".trim($dbMatches[1]).')';
+                }
+
+                return $label;
+            }
+        }
+
+        $composeFile = match (true) {
+            in_array('docker-compose.yml', $files) => $path.'/docker-compose.yml',
+            in_array('docker-compose.yaml', $files) => $path.'/docker-compose.yaml',
+            default => null,
+        };
+
+        if ($composeFile) {
+            $compose = @file_get_contents($composeFile);
+            if ($compose) {
+                foreach (['mysql' => 'MySQL', 'postgres' => 'PostgreSQL', 'mariadb' => 'MariaDB', 'mongo' => 'MongoDB'] as $needle => $label) {
+                    if (preg_match('/image:\s*'.$needle.'/i', $compose)) {
+                        return $label;
+                    }
+                }
+            }
+        }
+
+        if (in_array('artisan', $files) || in_array('composer.json', $files)) {
+            return 'SQLite';
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function candidateDockerfiles(string $path, array $files): array
+    {
+        $candidates = [];
+
+        if (in_array('Dockerfile', $files)) {
+            $candidates[] = $path.'/Dockerfile';
+        }
+
+        foreach (['docker/php/Dockerfile', 'docker/Dockerfile'] as $relative) {
+            if (is_file($path.'/'.$relative)) {
+                $candidates[] = $path.'/'.$relative;
+            }
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function readJson(string $path): array
+    {
+        return @json_decode(@file_get_contents($path), true) ?: [];
     }
 
     protected function readGitInfo(string $path): ?array
@@ -268,6 +429,9 @@ class ProjectScannerService
             $existing->update([
                 'tech_stack' => $data['tech_stack'],
                 'detected_files' => $data['detected_files'],
+                'runtime_version' => $data['runtime_version'],
+                'framework_version' => $data['framework_version'],
+                'database_engine' => $data['database_engine'],
                 'git_info' => $data['git_info'],
                 'is_scanned' => true,
                 'last_scanned_at' => now(),
@@ -290,6 +454,9 @@ class ProjectScannerService
             'path' => $data['path'],
             'tech_stack' => $data['tech_stack'],
             'detected_files' => $data['detected_files'],
+            'runtime_version' => $data['runtime_version'],
+            'framework_version' => $data['framework_version'],
+            'database_engine' => $data['database_engine'],
             'git_info' => $data['git_info'],
             'status_id' => ProjectStatus::where('code', $data['status'])->value('id'),
             'is_scanned' => true,

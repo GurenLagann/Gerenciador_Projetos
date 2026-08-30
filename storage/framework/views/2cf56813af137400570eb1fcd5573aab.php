@@ -12,8 +12,10 @@ $git = $project->git_info;
 
 <div class="space-y-6 max-w-7xl">
 
+    <div class="flex flex-col lg:flex-row gap-5 items-start">
+
     
-    <div class="rounded-2xl border overflow-hidden" style="background:var(--surface); border-color:var(--border);">
+    <div class="flex-1 min-w-0 w-full rounded-2xl border overflow-hidden" style="background:var(--surface); border-color:var(--border);">
         <div class="h-0.5" style="background:<?php echo e($sm->bar); ?>;"></div>
         <div class="p-6">
             <div class="flex flex-col sm:flex-row items-start gap-5">
@@ -55,10 +57,8 @@ $git = $project->git_info;
                     <form method="POST" action="<?php echo e(route('projects.destroy', $project)); ?>"
                         onsubmit="return confirm('Remover este projeto do painel? Ele será ignorado em futuros scans.')">
                         <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
-                        <button type="submit" class="text-xs px-3 py-2 rounded-xl border font-medium transition-colors w-full"
-                            style="border-color:var(--border-2); color:var(--muted-1);"
-                            onmouseover="this.style.background='rgba(239,68,68,.12)'; this.style.color='#fca5a5'; this.style.borderColor='rgba(239,68,68,.3)';"
-                            onmouseout="this.style.background='transparent'; this.style.color='var(--muted-1)'; this.style.borderColor='var(--border-2)';">
+                        <button type="submit"
+                            class="btn-outline-danger text-xs px-3 py-2 rounded-xl border font-medium w-full">
                             Remover projeto
                         </button>
                     </form>
@@ -85,6 +85,7 @@ $git = $project->git_info;
                         x-text="progress + '%'"></span>
                 </div>
                 <input type="range" min="0" max="100" x-model="progress" class="w-full"
+                    aria-label="Progresso do projeto"
                     @change="fetch('<?php echo e(route('projects.progress', $project)); ?>', {
                         method:'PATCH',
                         headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'<?php echo e(csrf_token()); ?>'},
@@ -95,6 +96,38 @@ $git = $project->git_info;
                 </div>
             </div>
         </div>
+    </div>
+
+    
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($project->runtime_version || $project->framework_version || $project->database_engine): ?>
+    <div class="rounded-2xl border p-5 flex-shrink-0 w-full lg:w-64"
+        style="background:var(--surface); border-color:var(--border);">
+        <h3 class="text-xs font-semibold uppercase tracking-wide mb-4" style="color:var(--muted-2);">
+            Stack Técnica
+        </h3>
+        <dl class="space-y-3 text-sm">
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($project->runtime_version): ?>
+            <div>
+                <dt class="text-xs" style="color:var(--muted-1);">Runtime</dt>
+                <dd class="text-white font-medium"><?php echo e($project->runtime_version); ?></dd>
+            </div>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($project->framework_version): ?>
+            <div>
+                <dt class="text-xs" style="color:var(--muted-1);">Framework</dt>
+                <dd class="text-white font-medium"><?php echo e($project->framework_version); ?></dd>
+            </div>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($project->database_engine): ?>
+            <div>
+                <dt class="text-xs" style="color:var(--muted-1);">Banco de dados</dt>
+                <dd class="text-white font-medium"><?php echo e($project->database_engine); ?></dd>
+            </div>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        </dl>
+    </div>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
     </div>
 
     
@@ -126,6 +159,9 @@ if (isset($__slots)) unset($__slots);
         </div>
 
         
+        <div class="flex flex-col gap-5">
+
+        
         <div class="rounded-2xl border p-5" style="background:var(--surface); border-color:var(--border);">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold text-white flex items-center gap-2">
@@ -147,16 +183,13 @@ if (isset($__slots)) unset($__slots);
             <form method="POST" action="<?php echo e(route('milestones.store', $project)); ?>" class="mb-4"
                 x-data="{open:false}">
                 <?php echo csrf_field(); ?>
-                <div x-show="!open"
+                <button type="button" x-show="!open"
                     @click="open=true;$nextTick(()=>$el.nextElementSibling.querySelector('input').focus())"
-                    class="text-xs text-center py-2.5 rounded-xl border border-dashed cursor-pointer transition-all"
-                    style="color:var(--muted-2); border-color:var(--border-2);"
-                    onmouseover="this.style.borderColor='#6366f1'; this.style.color='#a5b4fc';"
-                    onmouseout="this.style.borderColor='var(--border-2)'; this.style.color='var(--muted-2)';">
+                    class="outline-trigger w-full text-xs text-center py-2.5 rounded-xl border border-dashed">
                     + Novo marco
-                </div>
+                </button>
                 <div x-show="open" x-cloak class="space-y-2">
-                    <input type="text" name="title" placeholder="Titulo do marco..."
+                    <input type="text" name="title" placeholder="Título do marco..."
                         class="w-full text-sm rounded-xl px-3 py-2 border focus:outline-none transition-colors focus:border-indigo-500"
                         style="background:var(--surface-2); border-color:var(--border-2); color:#e2e8f0;">
                     <div class="flex gap-1.5">
@@ -184,15 +217,19 @@ if (isset($__slots)) unset($__slots);
                     <form method="POST" action="<?php echo e(route('milestones.toggle', [$project, $milestone])); ?>">
                         <?php echo csrf_field(); ?> <?php echo method_field('PATCH'); ?>
                         <button type="submit"
-                            class="w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all"
-                            style="<?php echo e($milestone->completed
-                                ? 'border-color:#6366f1; background:#6366f1;'
-                                : 'border-color:var(--border-3);'); ?>">
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($milestone->completed): ?>
-                            <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            class="w-7 h-7 rounded flex items-center justify-center flex-shrink-0 transition-all"
+                            aria-pressed="<?php echo e($milestone->completed ? 'true' : 'false'); ?>"
+                            aria-label="<?php echo e($milestone->completed ? 'Marcar marco como pendente' : 'Marcar marco como concluído'); ?>">
+                            <span class="w-4 h-4 rounded border-2 flex items-center justify-center"
+                                style="<?php echo e($milestone->completed
+                                    ? 'border-color:#6366f1; background:#6366f1;'
+                                    : 'border-color:var(--border-3);'); ?>">
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($milestone->completed): ?>
+                                <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </span>
                         </button>
                     </form>
                     <span class="flex-1 text-sm leading-snug"
@@ -204,8 +241,8 @@ if (isset($__slots)) unset($__slots);
                         onsubmit="return confirm('Excluir este marco?')">
                         <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                         <button type="submit"
-                            class="w-5 h-5 rounded flex items-center justify-center text-sm transition-colors hover:bg-red-900/30"
-                            style="color:var(--muted-2);" aria-label="Excluir marco">&times;</button>
+                            class="icon-action-danger w-6 h-6 rounded flex items-center justify-center text-sm"
+                            aria-label="Excluir marco">&times;</button>
                     </form>
                 </div>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
@@ -214,6 +251,91 @@ if (isset($__slots)) unset($__slots);
                 </div>
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
+        </div>
+
+        
+        <div class="rounded-2xl border p-5" style="background:var(--surface); border-color:var(--border);">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                    <svg class="w-4 h-4" style="color:#f59e0b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                    </svg>
+                    Débito Técnico
+                </h3>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($project->technicalDebts->count() > 0): ?>
+                <span class="text-xs font-medium tabular-nums px-2 py-0.5 rounded-md"
+                    style="background:var(--surface-2); color:var(--muted-1);">
+                    <?php echo e($project->technicalDebts->where('resolved', false)->count()); ?>/<?php echo e($project->technicalDebts->count()); ?>
+
+                </span>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </div>
+
+            
+            <form method="POST" action="<?php echo e(route('technical-debts.store', $project)); ?>" class="mb-4"
+                x-data="{open:false}">
+                <?php echo csrf_field(); ?>
+                <button type="button" x-show="!open"
+                    @click="open=true;$nextTick(()=>$el.nextElementSibling.querySelector('input').focus())"
+                    class="outline-trigger w-full text-xs text-center py-2.5 rounded-xl border border-dashed">
+                    + Novo débito
+                </button>
+                <div x-show="open" x-cloak class="space-y-2">
+                    <input type="text" name="title" placeholder="Descreva o débito técnico..."
+                        class="w-full text-sm rounded-xl px-3 py-2 border focus:outline-none transition-colors focus:border-indigo-500"
+                        style="background:var(--surface-2); border-color:var(--border-2); color:#e2e8f0;">
+                    <div class="flex gap-1.5">
+                        <button type="submit" class="flex-1 text-xs py-2 rounded-lg font-medium text-white"
+                            style="background:#4f46e5;">Salvar</button>
+                        <button type="button" @click="open=false"
+                            class="flex-1 text-xs py-2 rounded-lg font-medium"
+                            style="background:var(--border); color:var(--muted-1);">Cancelar</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="space-y-0.5">
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $project->technicalDebts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $debt): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                <div class="flex items-center gap-2.5 group px-2 py-2 rounded-xl hover:bg-white/[.03] transition-colors">
+                    <form method="POST" action="<?php echo e(route('technical-debts.toggle', [$project, $debt])); ?>">
+                        <?php echo csrf_field(); ?> <?php echo method_field('PATCH'); ?>
+                        <button type="submit"
+                            class="w-7 h-7 rounded flex items-center justify-center flex-shrink-0 transition-all"
+                            aria-pressed="<?php echo e($debt->resolved ? 'true' : 'false'); ?>"
+                            aria-label="<?php echo e($debt->resolved ? 'Marcar débito como pendente' : 'Marcar débito como resolvido'); ?>">
+                            <span class="w-4 h-4 rounded border-2 flex items-center justify-center"
+                                style="<?php echo e($debt->resolved
+                                    ? 'border-color:#f59e0b; background:#f59e0b;'
+                                    : 'border-color:var(--border-3);'); ?>">
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($debt->resolved): ?>
+                                <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </span>
+                        </button>
+                    </form>
+                    <span class="flex-1 text-sm leading-snug"
+                        style="<?php echo e($debt->resolved ? 'color:var(--muted-2); text-decoration:line-through;' : 'color:#e2e8f0;'); ?>">
+                        <?php echo e($debt->title); ?>
+
+                    </span>
+                    <form method="POST" action="<?php echo e(route('technical-debts.destroy', [$project, $debt])); ?>"
+                        onsubmit="return confirm('Excluir este débito técnico?')">
+                        <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
+                        <button type="submit"
+                            class="icon-action-danger w-6 h-6 rounded flex items-center justify-center text-sm"
+                            aria-label="Excluir débito técnico">&times;</button>
+                    </form>
+                </div>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                <div class="text-center py-6" style="color:var(--muted-3);">
+                    <p class="text-xs">Nenhum débito técnico registrado ainda.</p>
+                </div>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </div>
+        </div>
+
         </div>
     </div>
 
@@ -225,7 +347,7 @@ if (isset($__slots)) unset($__slots);
                 <svg class="w-4 h-4" style="color:#6366f1;" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0z"/>
                 </svg>
-                Historico Git
+                Histórico Git
             </h3>
             <div class="flex items-center gap-3 text-xs">
                 <span class="flex items-center gap-1.5" style="color:var(--muted-1);">
@@ -247,10 +369,10 @@ if (isset($__slots)) unset($__slots);
                 $diff = (new \DateTime())->diff($date);
                 if ($diff->days === 0) $ago = 'hoje';
                 elseif ($diff->days === 1) $ago = 'ontem';
-                elseif ($diff->days < 7) $ago = $diff->days . 'd atras';
-                elseif ($diff->days < 30) $ago = floor($diff->days/7) . 'sem atras';
-                elseif ($diff->days < 365) $ago = floor($diff->days/30) . 'm atras';
-                else $ago = floor($diff->days/365) . 'a atras';
+                elseif ($diff->days < 7) $ago = $diff->days . 'd atrás';
+                elseif ($diff->days < 30) $ago = floor($diff->days/7) . 'sem atrás';
+                elseif ($diff->days < 365) $ago = floor($diff->days/30) . 'm atrás';
+                else $ago = floor($diff->days/365) . 'a atrás';
             ?>
             <div class="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[.02] transition-colors <?php echo e($i > 0 ? 'border-t' : ''); ?>"
                 style="<?php echo e($i > 0 ? 'border-color:var(--border);' : ''); ?>">

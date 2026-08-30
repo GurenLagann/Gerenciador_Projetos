@@ -17,6 +17,7 @@ class Project extends Model
 
     protected $fillable = [
         'name', 'slug', 'path', 'description', 'tech_stack', 'detected_files', 'git_info',
+        'runtime_version', 'framework_version', 'database_engine',
         'status_id', 'progress', 'color', 'icon', 'is_scanned', 'last_scanned_at',
     ];
 
@@ -44,6 +45,11 @@ class Project extends Model
     public function milestones(): HasMany
     {
         return $this->hasMany(Milestone::class)->orderBy('order');
+    }
+
+    public function technicalDebts(): HasMany
+    {
+        return $this->hasMany(TechnicalDebt::class)->orderBy('order');
     }
 
     public function annotations(): MorphMany

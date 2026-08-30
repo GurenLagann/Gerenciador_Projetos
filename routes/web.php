@@ -4,6 +4,7 @@ use App\Http\Controllers\AnnotationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IdeaController;
 use App\Http\Controllers\MilestoneController;
+use App\Http\Controllers\TechnicalDebtController;
 use App\Http\Controllers\ProjectController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +25,11 @@ Route::patch('/projects/{project}/milestones/{milestone}', [MilestoneController:
 Route::patch('/projects/{project}/milestones/{milestone}/toggle', [MilestoneController::class, 'toggle'])->name('milestones.toggle');
 Route::delete('/projects/{project}/milestones/{milestone}', [MilestoneController::class, 'destroy'])->name('milestones.destroy');
 Route::post('/projects/{project}/milestones/reorder', [MilestoneController::class, 'reorder'])->name('milestones.reorder');
+
+// Technical debt
+Route::post('/projects/{project}/technical-debts', [TechnicalDebtController::class, 'store'])->name('technical-debts.store');
+Route::patch('/projects/{project}/technical-debts/{technicalDebt}/toggle', [TechnicalDebtController::class, 'toggle'])->name('technical-debts.toggle');
+Route::delete('/projects/{project}/technical-debts/{technicalDebt}', [TechnicalDebtController::class, 'destroy'])->name('technical-debts.destroy');
 
 // Annotations
 Route::post('/annotations', [AnnotationController::class, 'store'])->name('annotations.store');

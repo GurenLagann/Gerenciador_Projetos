@@ -36,7 +36,7 @@ class ProjectController extends Controller
 
     public function show(Project $project)
     {
-        $project->load(['milestones', 'annotations', 'tags', 'status']);
+        $project->load(['milestones', 'technicalDebts', 'annotations', 'tags', 'status']);
         $statuses = ProjectStatus::orderBy('sort_order')->get();
 
         return view('projects.show', compact('project', 'statuses'));

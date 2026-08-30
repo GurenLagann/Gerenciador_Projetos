@@ -46,14 +46,11 @@
                 <form method="POST" action="<?php echo e(route('ideas.store')); ?>" x-data="{open:false}">
                     <?php echo csrf_field(); ?>
                     <input type="hidden" name="status" value="raw">
-                    <div x-show="!open"
+                    <button type="button" x-show="!open"
                         @click="open=true;$nextTick(()=>$el.nextElementSibling.querySelector('input').focus())"
-                        class="text-xs text-center py-2 rounded-xl border border-dashed cursor-pointer transition-all"
-                        style="color:var(--muted-2); border-color:var(--border-2);"
-                        onmouseover="this.style.borderColor='#60a5fa'; this.style.color='#93c5fd';"
-                        onmouseout="this.style.borderColor='var(--border-2)'; this.style.color='var(--muted-2)';">
+                        class="outline-trigger w-full text-xs text-center py-2 rounded-xl border border-dashed">
                         + Nova ideia
-                    </div>
+                    </button>
                     <div x-show="open" x-cloak class="space-y-2">
                         <input type="text" name="title" placeholder="Nome da ideia..."
                             class="w-full text-sm rounded-xl px-3 py-2 border focus:outline-none"
@@ -91,11 +88,7 @@
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($column->code !== 'parked'): ?>
                         <form method="POST" action="<?php echo e(route('ideas.convert', $idea)); ?>">
                             <?php echo csrf_field(); ?>
-                            <button type="submit"
-                                class="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors"
-                                style="color:#6ee7b7;"
-                                onmouseover="this.style.background='rgba(16,185,129,.15)';"
-                                onmouseout="this.style.background='transparent';">
+                            <button type="submit" class="icon-action-success flex items-center gap-1 text-xs px-2 py-1 rounded-lg">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                                 </svg>
@@ -105,11 +98,7 @@
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <form method="POST" action="<?php echo e(route('ideas.destroy', $idea)); ?>" class="ml-auto">
                             <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
-                            <button type="submit"
-                                class="text-xs px-2 py-1 rounded-lg transition-colors"
-                                style="color:var(--muted-2);"
-                                onmouseover="this.style.background='rgba(239,68,68,.15)'; this.style.color='#fca5a5';"
-                                onmouseout="this.style.background='transparent'; this.style.color='var(--muted-2)';"
+                            <button type="submit" class="icon-action-danger text-xs px-2 py-1 rounded-lg"
                                 onclick="return confirm('Excluir esta ideia?')">Excluir</button>
                         </form>
                     </div>

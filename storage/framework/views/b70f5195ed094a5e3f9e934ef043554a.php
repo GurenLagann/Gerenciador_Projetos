@@ -23,10 +23,7 @@ $lastCommit = $git['commits'][0] ?? null;
                     onsubmit="return confirm('Remover este projeto do painel? Ele será ignorado em futuros scans.')">
                     <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                     <button type="submit" aria-label="Remover projeto"
-                        class="w-5 h-5 rounded flex items-center justify-center transition-colors"
-                        style="color:var(--muted-2);"
-                        onmouseover="this.style.background='rgba(239,68,68,.15)'; this.style.color='#fca5a5';"
-                        onmouseout="this.style.background='transparent'; this.style.color='var(--muted-2)';">
+                        class="icon-action-danger w-6 h-6 rounded flex items-center justify-center">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>

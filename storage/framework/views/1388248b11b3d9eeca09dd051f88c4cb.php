@@ -3,13 +3,26 @@
 <?php $__env->startSection('content'); ?>
 <?php
 $total = $statusCounts->sum('count');
-$cumulative = 0;
-$ringStops = $statusCounts->map(function ($entry) use ($total, &$cumulative) {
-    $pct = $total > 0 ? ($entry->count / $total) * 100 : 0;
-    $from = $cumulative;
-    $cumulative += $pct;
-    return "{$entry->status->color} {$from}% {$cumulative}%";
-})->implode(', ');
+
+$statusChartData = [
+    'labels' => $statusCounts->map(fn ($entry) => $entry->status->label)->values(),
+    'values' => $statusCounts->map(fn ($entry) => $entry->count)->values(),
+    'colors' => $statusCounts->map(fn ($entry) => $entry->status->color)->values(),
+];
+
+$ideaPipeline = $ideaStatusCounts->filter(fn ($entry) => $entry->status->is_board_column)->sortByDesc('count');
+$ideaStatusChartData = [
+    'labels' => $ideaPipeline->map(fn ($entry) => $entry->status->label)->values(),
+    'values' => $ideaPipeline->map(fn ($entry) => $entry->count)->values(),
+    'colors' => $ideaPipeline->map(fn ($entry) => $entry->status->color)->values(),
+];
+
+$ideaPriorityOrdered = collect(['low', 'medium', 'high'])->map(fn ($code) => $ideaPriorityCounts->get($code))->filter();
+$ideaPriorityChartData = [
+    'labels' => $ideaPriorityOrdered->map(fn ($entry) => $entry->priority->label)->values(),
+    'values' => $ideaPriorityOrdered->map(fn ($entry) => $entry->count)->values(),
+    'colors' => $ideaPriorityOrdered->map(fn ($entry) => $entry->priority->dot)->values(),
+];
 
 $paletteItems = collect([
     ['group' => 'Ações', 'icon' => 'action', 'label' => 'Escanear Projetos', 'hint' => 'ir para Projetos', 'url' => route('projects.index')],
@@ -69,9 +82,12 @@ $paletteItems = collect([
             <p class="text-sm" style="color:var(--muted-3);">Sem projetos ainda.</p>
             <?php else: ?>
             <div class="flex items-center gap-6 max-w-xs">
-                <div class="w-28 h-28 rounded-full flex items-center justify-center flex-shrink-0"
-                    style="background: conic-gradient(<?php echo e($ringStops); ?>);">
-                    <div class="w-[74px] h-[74px] rounded-full flex flex-col items-center justify-center" style="background:var(--surface);">
+                <div class="relative w-28 h-28 flex-shrink-0">
+                    <canvas id="statusChart" width="112" height="112"
+                        data-labels="<?php echo e(json_encode($statusChartData['labels'])); ?>"
+                        data-values="<?php echo e(json_encode($statusChartData['values'])); ?>"
+                        data-colors="<?php echo e(json_encode($statusChartData['colors'])); ?>"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span class="text-xl font-semibold" style="font-family:var(--font-mono); color:white;"><?php echo e($total); ?></span>
                         <span class="text-[10px]" style="color:var(--muted-2);">total</span>
                     </div>
@@ -118,6 +134,102 @@ $paletteItems = collect([
         </button>
 
         
+        <div class="col-span-full flex items-center gap-2 text-xs font-bold uppercase tracking-widest mt-2" style="color:var(--muted-2);">
+            Pipeline de Ideias
+        </div>
+
+        <div class="sm:col-span-2 rounded-2xl p-6 border" style="background:var(--surface); border-color:var(--border);">
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-4" style="color:var(--muted-2);">
+                <svg class="w-3.5 h-3.5" style="color:#818cf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.347A5.002 5.002 0 0112 21a5.002 5.002 0 01-4.657-3.153l-.347-.347z"/>
+                </svg>
+                Por Status
+            </div>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($ideaStatusChartData['values']->isEmpty()): ?>
+            <p class="text-sm" style="color:var(--muted-3);">Nenhuma ideia ainda.</p>
+            <?php else: ?>
+            <canvas id="ideaStatusChart" height="140"
+                data-labels="<?php echo e(json_encode($ideaStatusChartData['labels'])); ?>"
+                data-values="<?php echo e(json_encode($ideaStatusChartData['values'])); ?>"
+                data-colors="<?php echo e(json_encode($ideaStatusChartData['colors'])); ?>"></canvas>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        </div>
+
+        <div class="sm:col-span-2 rounded-2xl p-6 border" style="background:var(--surface); border-color:var(--border);">
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-4" style="color:var(--muted-2);">
+                <svg class="w-3.5 h-3.5" style="color:#818cf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 21V9m0 12h4m-4-8l6-6 4 3 6-6"/>
+                </svg>
+                Por Prioridade
+            </div>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($ideaPriorityChartData['values']->isEmpty()): ?>
+            <p class="text-sm" style="color:var(--muted-3);">Nenhuma ideia ainda.</p>
+            <?php else: ?>
+            <canvas id="ideaPriorityChart" height="100"
+                data-labels="<?php echo e(json_encode($ideaPriorityChartData['labels'])); ?>"
+                data-values="<?php echo e(json_encode($ideaPriorityChartData['values'])); ?>"
+                data-colors="<?php echo e(json_encode($ideaPriorityChartData['colors'])); ?>"></canvas>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        </div>
+
+        
+        <div class="col-span-full flex items-center gap-2 text-xs font-bold uppercase tracking-widest mt-2" style="color:var(--muted-2);">
+            Saúde do Projeto
+        </div>
+
+        <div class="sm:col-span-2 rounded-2xl p-6 border" style="background:var(--surface); border-color:var(--border);">
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-4" style="color:var(--muted-2);">
+                <svg class="w-3.5 h-3.5" style="color:#818cf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+                </svg>
+                Débito Técnico
+            </div>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($openDebtCount === 0): ?>
+            <p class="text-sm" style="color:var(--muted-3);">Nenhum débito técnico registrado.</p>
+            <?php else: ?>
+            <div class="text-3xl font-medium" style="font-family:var(--font-mono); color:white; font-variant-numeric:tabular-nums;"><?php echo e($openDebtCount); ?></div>
+            <div class="text-sm mt-0.5 mb-4" style="color:var(--muted-1);">débitos técnicos em aberto</div>
+            <div class="space-y-2">
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $topDebtProjects; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <a href="<?php echo e(route('projects.show', $p)); ?>" class="flex items-center gap-2.5 text-sm hover:opacity-80 transition-opacity">
+                    <span class="flex-1 min-w-0 truncate" style="color:var(--text);"><?php echo e($p->name); ?></span>
+                    <span class="tabular-nums flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-medium" style="font-family:var(--font-mono); background:var(--surface-3); color:var(--muted-2);"><?php echo e($p->open_debt_count); ?></span>
+                </a>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </div>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        </div>
+
+        <div class="sm:col-span-2 rounded-2xl p-6 border" style="background:var(--surface); border-color:var(--border);">
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-4" style="color:var(--muted-2);">
+                <svg class="w-3.5 h-3.5" style="color:#818cf8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                Marcos Próximos
+            </div>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($upcomingMilestones->isEmpty()): ?>
+            <p class="text-sm" style="color:var(--muted-3);">Nenhum marco pendente.</p>
+            <?php else: ?>
+            <div class="space-y-2">
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $upcomingMilestones; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $milestone): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <?php $overdue = $milestone->due_date->isPast(); ?>
+                <a href="<?php echo e(route('projects.show', $milestone->project)); ?>" class="flex items-center gap-2.5 text-sm hover:opacity-80 transition-opacity">
+                    <div class="min-w-0 flex-1">
+                        <div class="truncate" style="color:var(--text);"><?php echo e($milestone->title); ?></div>
+                        <div class="text-[11px] truncate" style="color:var(--muted-3);"><?php echo e($milestone->project->name); ?></div>
+                    </div>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($overdue): ?>
+                    <span class="flex-shrink-0 text-[11px] px-1.5 py-0.5 rounded font-medium" style="background:rgba(239,68,68,.15); color:#fca5a5;">atrasado</span>
+                    <?php else: ?>
+                    <span class="tabular-nums flex-shrink-0 text-[11px]" style="font-family:var(--font-mono); color:var(--muted-2);"><?php echo e($milestone->due_date->format('d/m')); ?></span>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                </a>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </div>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        </div>
+
+        
         <div class="sm:col-span-2 lg:col-span-3 lg:row-span-2 rounded-2xl p-6 border" style="background:var(--surface); border-color:var(--border);">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style="color:var(--muted-2);">
@@ -131,7 +243,7 @@ $paletteItems = collect([
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($recentProjects->isEmpty()): ?>
             <div class="rounded-2xl border border-dashed py-10 text-center" style="border-color:var(--border-2);">
                 <p class="text-sm font-medium text-white mb-1">Nenhum projeto ainda</p>
-                <p class="text-xs mb-4" style="color:var(--muted-1);">Escaneie a pasta de projetos para comecar.</p>
+                <p class="text-xs mb-4" style="color:var(--muted-1);">Escaneie a pasta de projetos para começar.</p>
                 <div class="inline-block">
                     <?php
 $__split = function ($name, $params = []) {
@@ -208,6 +320,7 @@ if (isset($__slots)) unset($__slots);
 
 
 <div id="cmdkBackdrop" class="fixed inset-0 z-50 flex items-start justify-center opacity-0 pointer-events-none transition-opacity"
+    role="dialog" aria-modal="true" aria-label="Busca rápida"
     style="background:rgba(6,9,16,.6); backdrop-filter:blur(3px); padding-top:12vh;">
     <div id="cmdkPanel" class="w-full max-w-lg mx-4 rounded-2xl border overflow-hidden transition-transform"
         style="background:var(--surface); border-color:var(--border-2); box-shadow:0 24px 60px rgba(0,0,0,.5); transform:translateY(-8px) scale(.98);">
@@ -216,15 +329,17 @@ if (isset($__slots)) unset($__slots);
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
             </svg>
             <input id="cmdkInput" type="text" autocomplete="off" spellcheck="false"
-                placeholder="Buscar projetos, ideias ou uma ação…"
+                placeholder="Buscar projetos, ideias ou uma ação…" aria-label="Buscar projetos, ideias ou uma ação"
+                role="combobox" aria-expanded="true" aria-controls="cmdkResults"
                 class="flex-1 bg-transparent border-0 outline-none text-sm" style="color:white;">
             <kbd class="text-xs px-1.5 py-0.5 rounded flex-shrink-0" style="font-family:var(--font-mono); background:var(--surface-3); border:1px solid var(--border-2); color:var(--muted-2);">Esc</kbd>
         </div>
-        <div id="cmdkResults" class="max-h-80 overflow-y-auto p-2"></div>
+        <div id="cmdkResults" role="listbox" aria-label="Resultados da busca" class="max-h-80 overflow-y-auto p-2"></div>
     </div>
 </div>
 
 <?php $__env->startPush('scripts'); ?>
+<?php echo app('Illuminate\Foundation\Vite')('resources/js/dashboard.js'); ?>
 <script>
 (function () {
     var ICONS = {
@@ -265,7 +380,7 @@ if (isset($__slots)) unset($__slots);
                 html += '<div class="text-[10px] font-bold uppercase tracking-wider px-2.5 pt-2 pb-1" style="color:var(--muted-3);">' + it.group + '</div>';
                 lastGroup = it.group;
             }
-            html += '<div class="cmdk-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-sm' + (i === activeIndex ? ' active' : '') + '" data-i="' + i + '" style="' + (i === activeIndex ? 'background:rgba(99,102,241,.14);' : '') + ' color:var(--text);">' +
+            html += '<div class="cmdk-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-sm' + (i === activeIndex ? ' active' : '') + '" role="option" aria-selected="' + (i === activeIndex ? 'true' : 'false') + '" data-i="' + i + '" style="' + (i === activeIndex ? 'background:rgba(99,102,241,.14);' : '') + ' color:var(--text);">' +
                 '<svg class="w-3.5 h-3.5 flex-shrink-0" style="color:var(--muted-2);" fill="none" stroke="currentColor" viewBox="0 0 24 24">' + ICONS[it.icon] + '</svg>' +
                 '<span class="flex-1 truncate">' + escapeHtml(it.label) + '</span>' +
                 '<span class="text-xs flex-shrink-0" style="color:var(--muted-3);">' + escapeHtml(it.hint) + '</span>' +
@@ -278,6 +393,7 @@ if (isset($__slots)) unset($__slots);
         Array.prototype.forEach.call(results.querySelectorAll('.cmdk-item'), function (el) {
             var isActive = Number(el.dataset.i) === activeIndex;
             el.style.background = isActive ? 'rgba(99,102,241,.14)' : '';
+            el.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
         var activeEl = results.querySelector('.cmdk-item[data-i="' + activeIndex + '"]');
         if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });

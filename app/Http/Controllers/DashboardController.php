@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Idea;
+use App\Models\Milestone;
 use App\Models\Project;
+use App\Models\TechnicalDebt;
 
 class DashboardController extends Controller
 {
@@ -25,6 +27,37 @@ class DashboardController extends Controller
             ->get()
             ->mapWithKeys(fn ($row) => [$row->status->code => (object) ['count' => $row->count, 'status' => $row->status]]);
 
+        $openDebtCount = TechnicalDebt::where('resolved', false)->count();
+
+        $topDebtProjects = Project::withCount(['technicalDebts as open_debt_count' => function ($q) {
+            $q->where('resolved', false);
+        }])
+            ->get()
+            ->filter(fn ($p) => $p->open_debt_count > 0)
+            ->sortByDesc('open_debt_count')
+            ->take(5)
+            ->values();
+
+        $ideaStatusCounts = Idea::with('status')
+            ->selectRaw('status_id, count(*) as count')
+            ->groupBy('status_id')
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->status->code => (object) ['count' => $row->count, 'status' => $row->status]]);
+
+        $ideaPriorityCounts = Idea::with('priority')
+            ->selectRaw('priority_id, count(*) as count')
+            ->whereNotNull('priority_id')
+            ->groupBy('priority_id')
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->priority->code => (object) ['count' => $row->count, 'priority' => $row->priority]]);
+
+        $upcomingMilestones = Milestone::with('project')
+            ->whereNotNull('due_date')
+            ->where('completed', false)
+            ->orderBy('due_date')
+            ->take(6)
+            ->get();
+
         // Lightweight payload for the ⌘K quick-switcher (small dataset — fine to load in full).
         $paletteProjects = Project::orderBy('name')->get(['name', 'slug'])->map(fn ($p) => [
             'label' => $p->name,
@@ -36,7 +69,9 @@ class DashboardController extends Controller
         ]);
 
         return view('dashboard.index', compact(
-            'stats', 'recentProjects', 'recentIdeas', 'activeProjects', 'statusCounts', 'paletteProjects', 'paletteIdeas'
+            'stats', 'recentProjects', 'recentIdeas', 'activeProjects', 'statusCounts',
+            'openDebtCount', 'topDebtProjects', 'ideaStatusCounts', 'ideaPriorityCounts', 'upcomingMilestones',
+            'paletteProjects', 'paletteIdeas'
         ));
     }
 }

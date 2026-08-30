@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'ollama' => [
+        'base_url' => env('OLLAMA_BASE_URL', 'http://ollama:11434'),
+        'embed_model' => env('OLLAMA_EMBED_MODEL', 'bge-m3'),
+    ],
+
+    'qdrant' => [
+        'base_url' => env('QDRANT_BASE_URL', 'http://qdrant:6333'),
+        'collection' => env('QDRANT_COLLECTION', 'project_manager_content'),
+    ],
+
 ];

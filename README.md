@@ -1,59 +1,105 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Gerenciador de Projetos
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Dashboard local, single-user e sem autenticação, para gerenciar projetos de software, ideias e anotações — com importação automática de repositórios via varredura do sistema de arquivos e busca semântica (RAG) sobre as anotações.
 
-## About Laravel
+**Stack**: Laravel 13 / PHP 8.3+, Livewire 3, Alpine.js, Tailwind CSS 4, Vite, SQLite.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Funcionalidades
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Projects** — projetos de software criados manualmente ou importados automaticamente por varredura de repositórios git no host. Guarda stack tecnológica, metadados do git, progresso, marcos (milestones), débitos técnicos, anotações e tags.
+- **Ideas** — quadro Kanban leve para conceitos de projeto, com conversão de Ideia → Projeto (`IdeaConversionService::convert()`).
+- **Technical Debt** — checklist de débitos técnicos por projeto (`TechnicalDebt` / `TechnicalDebtController`), com contagem de pendências exibida no dashboard.
+- **Annotations** — notas em Markdown (via `league/commonmark`), polimórficas (associáveis a Projects ou Ideas), com opção de fixar (pin) no topo.
+- **Tags** — polimórficas e compartilhadas entre Projects e Ideas.
+- **Dashboard** — visão geral com estatísticas, gráficos (Chart.js, via `resources/js/dashboard.js`) de status de projetos/ideias e débitos técnicos em aberto, marcos próximos e um quick-switcher (⌘K) para navegar direto a projetos/ideias.
+- **Busca semântica (RAG)** — embeddings gerados via Ollama (`bge-m3`) e indexados no Qdrant, permitindo busca por similaridade sobre descrições e anotações. A indexação roda em background via jobs de fila (`App\Jobs\IndexSearchableContent` / `RemoveFromSearchIndex`), disparados por observers (`App\Observers\{Project,Idea,Annotation}Observer`) nos models.
+- **Servidor MCP** — expõe o dashboard como ferramentas MCP (`app/Mcp/Servers/ProjectManagerServer.php`, tools em `app/Mcp/Tools/*.php`) para uso com Claude Code / Claude Desktop via STDIO.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Requisitos
 
-## Learning Laravel
+- PHP 8.3+
+- Composer
+- Node.js / npm
+- Docker e Docker Compose (para o ambiente completo, incluindo Ollama e Qdrant)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Instalação
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+# Configuração inicial (instala dependências, cria .env, roda migrations, builda assets)
+composer setup
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Desenvolvimento
 
-## Contributing
+```bash
+# Sobe servidor, worker de fila, logs (Pail) e Vite em paralelo
+composer dev
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Testes
 
-## Code of Conduct
+```bash
+# Roda toda a suíte de testes
+composer test
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Roda um teste específico
+php artisan test --filter=TestName
+```
 
-## Security Vulnerabilities
+## Estilo de código
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+./vendor/bin/pint
+```
 
-## License
+## Build de assets
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# Gerenciador_Projetos
+```bash
+npm run build
+```
+
+## Ambiente Docker (produção/local completo)
+
+O `docker-compose.yml` sobe os serviços `nginx`, `php`, `queue-worker`, `ollama` e `qdrant`.
+
+```bash
+docker-compose up -d
+
+# Baixa o modelo de embedding local (uma vez, após o primeiro up)
+docker compose exec ollama ollama pull bge-m3
+
+# Cria/verifica a collection do Qdrant (idempotente)
+docker compose exec php php artisan search:init-collection
+
+# Enfileira jobs de indexação para projetos/ideias/anotações já existentes
+docker compose exec php php artisan search:rebuild-index
+```
+
+A app roda em `http://localhost:8082` (via nginx) por padrão.
+
+### Varredura de projetos (ProjectScannerService)
+
+Em Docker, o `/var/www` do host é montado como somente-leitura em `/var/www/host_projects`, permitindo que o scanner "enxergue" projetos irmãos no host. O diretório base é configurável via `SCAN_BASE_PATH` (padrão `/var/www/host_projects`). Apenas diretórios contendo uma pasta `.git` são importados; projetos removidos manualmente (soft delete) nunca são recriados pelo scanner.
+
+### Servidor MCP
+
+```bash
+# Roda o servidor MCP manualmente sobre STDIO (para depuração)
+docker compose exec -T php php artisan mcp:start project-manager
+```
+
+O servidor é registrado em escopo de usuário no Claude Code (não via `.mcp.json` do repositório), então fica disponível em qualquer sessão independentemente do diretório de trabalho. Para re-registrar:
+
+```bash
+claude mcp add -s user project-manager -- docker compose --project-directory /var/www/Gerenciador_Projetos exec -T php php artisan mcp:start project-manager
+```
+
+## Convenções de rotas
+
+- Projects usam `slug` como chave de rota (`getRouteKeyName()`), não `id`.
+- Ações em sub-recursos usam `PATCH` (ex.: `/projects/{project}/status`, `/milestones/{milestone}/toggle`).
+- Todas as rotas ficam em `routes/web.php` — não há rotas de API.
+
+## Mais detalhes
+
+Consulte `CLAUDE.md` para uma descrição arquitetural mais detalhada (services, observers, jobs, Livewire components e o servidor MCP).

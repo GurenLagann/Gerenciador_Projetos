@@ -54,7 +54,7 @@
             </svg>
         </div>
         <p class="text-sm font-semibold text-white mb-1">Nenhum projeto encontrado</p>
-        <p class="text-xs" style="color:var(--muted-1);">Use o botao acima para escanear e detectar seus projetos.</p>
+        <p class="text-xs" style="color:var(--muted-1);">Use o botão acima para escanear e detectar seus projetos.</p>
     </div>
     @else
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">

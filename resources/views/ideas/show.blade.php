@@ -63,7 +63,7 @@ $pm = $idea->priority;
                         Converter em Projeto
                     </button>
                 </form>
-                @else
+                @elseif($idea->convertedProject)
                 <a href="{{ route('projects.show', $idea->convertedProject) }}"
                     class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
                     style="background:rgba(196,181,253,.1); border:1px solid rgba(196,181,253,.2); color:#c4b5fd;">
@@ -72,6 +72,8 @@ $pm = $idea->priority;
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                     </svg>
                 </a>
+                @else
+                <span class="text-sm" style="color:var(--muted-3);">Projeto convertido foi removido</span>
                 @endif
             </div>
         </div>

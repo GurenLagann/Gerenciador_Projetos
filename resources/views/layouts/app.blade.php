@@ -45,6 +45,27 @@
             border-color: rgba(99,102,241,.35) !important;
         }
 
+        /* Icon-only action buttons: shared hover + keyboard-focus states */
+        .icon-action { color: var(--muted-2); transition: background-color .15s ease, color .15s ease; }
+        .icon-action:hover, .icon-action:focus-visible { background: rgba(255,255,255,.06); color: #e2e8f0; }
+        .icon-action-danger { color: var(--muted-2); transition: background-color .15s ease, color .15s ease; }
+        .icon-action-danger:hover, .icon-action-danger:focus-visible { background: rgba(239,68,68,.15); color: #fca5a5; }
+        .icon-action-success { color: #6ee7b7; transition: background-color .15s ease; }
+        .icon-action-success:hover, .icon-action-success:focus-visible { background: rgba(16,185,129,.15); }
+
+        /* Dashed "add new" triggers */
+        .outline-trigger { color: var(--muted-2); border-color: var(--border-2); transition: border-color .15s ease, color .15s ease; }
+        .outline-trigger:hover, .outline-trigger:focus-visible { border-color: #6366f1; color: #a5b4fc; }
+
+        /* Outlined danger button (e.g. "Remover projeto") */
+        .btn-outline-danger { border-color: var(--border-2); color: var(--muted-1); transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
+        .btn-outline-danger:hover, .btn-outline-danger:focus-visible { background: rgba(239,68,68,.12); color: #fca5a5; border-color: rgba(239,68,68,.3); }
+
+        .icon-action:focus-visible, .icon-action-danger:focus-visible, .icon-action-success:focus-visible,
+        .outline-trigger:focus-visible, .btn-outline-danger:focus-visible {
+            outline: 2px solid #6366f1; outline-offset: 2px;
+        }
+
         /* Misc */
         [x-cloak] { display: none !important; }
         .toast-enter { animation: toastIn .3s ease forwards; }
