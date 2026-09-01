@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\GitStatusService;
+use App\Services\TechnicalDebtSignalService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -100,5 +101,21 @@ class Project extends Model
         $basePath = env('SCAN_BASE_PATH', '/var/www/host_projects');
 
         return app(GitStatusService::class)->forPath($basePath.'/'.$this->path);
+    }
+
+    /**
+     * Live count of TODO/FIXME markers in the project's source tree.
+     *
+     * @return array{todo: int, fixme: int, total: int}
+     */
+    public function liveTechnicalDebtSignal(): array
+    {
+        if (! $this->path || ! $this->git_info) {
+            return ['todo' => 0, 'fixme' => 0, 'total' => 0];
+        }
+
+        $basePath = env('SCAN_BASE_PATH', '/var/www/host_projects');
+
+        return app(TechnicalDebtSignalService::class)->forPath($basePath.'/'.$this->path);
     }
 }

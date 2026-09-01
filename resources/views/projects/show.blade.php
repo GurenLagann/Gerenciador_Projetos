@@ -10,6 +10,7 @@
 $sm = $project->status;
 $git = $project->git_info;
 $liveGit = $git ? $project->liveGitStatus() : null;
+$debtSignal = $git ? $project->liveTechnicalDebtSignal() : null;
 @endphp
 
 <div class="space-y-6 max-w-7xl">
@@ -261,6 +262,21 @@ $liveGit = $git ? $project->liveGitStatus() : null;
                 </span>
                 @endif
             </div>
+
+            @if($debtSignal && $debtSignal['total'] > 0)
+            @php
+            $debtParts = [];
+            if ($debtSignal['todo'] > 0) {
+                $debtParts[] = $debtSignal['todo'].' TODO'.($debtSignal['todo'] === 1 ? '' : 's');
+            }
+            if ($debtSignal['fixme'] > 0) {
+                $debtParts[] = $debtSignal['fixme'].' FIXME'.($debtSignal['fixme'] === 1 ? '' : 's');
+            }
+            @endphp
+            <p class="text-xs mb-4 -mt-2" style="color:var(--muted-2);" title="Detectado via grep no código-fonte, separado do checklist manual acima">
+                🔍 {{ implode(' · ', $debtParts) }} no código
+            </p>
+            @endif
 
             {{-- Add --}}
             <form method="POST" action="{{ route('technical-debts.store', $project) }}" class="mb-4"
