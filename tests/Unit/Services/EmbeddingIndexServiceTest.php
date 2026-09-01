@@ -30,18 +30,54 @@ class EmbeddingIndexServiceTest extends TestCase
         });
     }
 
-    public function test_upsert_point_removes_instead_of_embedding_when_text_is_empty(): void
+    public function test_upsert_point_removes_instead_of_embedding_when_title_and_text_are_both_empty(): void
     {
         Http::fake([
             '*/points/delete' => Http::response(['status' => 'ok']),
         ]);
 
-        app(EmbeddingIndexService::class)->upsertPoint('project', 7, 'Empty Project', '');
+        app(EmbeddingIndexService::class)->upsertPoint('project', 7, '', '');
 
         Http::assertNotSent(fn ($request) => str_contains($request->url(), '/api/embed'));
         Http::assertSent(function ($request) {
             return str_contains($request->url(), '/points/delete')
                 && $request['points'][0] === 1_000_000_007;
+        });
+    }
+
+    public function test_upsert_point_still_embeds_when_text_is_empty_but_title_is_not(): void
+    {
+        Http::fake([
+            '*/api/embed' => Http::response(['embeddings' => [array_fill(0, 1024, 0.1)]]),
+            '*/points' => Http::response(['status' => 'ok']),
+        ]);
+
+        app(EmbeddingIndexService::class)->upsertPoint('technical_debt', 3, 'Refactor the scanner', '');
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), '/api/embed')
+                && str_contains($request['input'], 'Refactor the scanner');
+        });
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), '/points')
+                && $request['points'][0]['id'] === 5_000_000_003
+                && $request['points'][0]['payload']['type'] === 'technical_debt';
+        });
+    }
+
+    public function test_upsert_point_uses_the_milestone_offset(): void
+    {
+        Http::fake([
+            '*/api/embed' => Http::response(['embeddings' => [array_fill(0, 1024, 0.1)]]),
+            '*/points' => Http::response(['status' => 'ok']),
+        ]);
+
+        app(EmbeddingIndexService::class)->upsertPoint('milestone', 9, 'Ship v1', 'Details about shipping v1');
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), '/points')
+                && $request['points'][0]['id'] === 4_000_000_009
+                && $request['points'][0]['payload']['type'] === 'milestone';
         });
     }
 

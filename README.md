@@ -114,7 +114,7 @@ Em Docker, o `/var/www` do host é montado como somente-leitura em `/var/www/hos
 
 ## Busca semântica (RAG)
 
-`EmbeddingIndexService` provê busca semântica sobre `Project.description`, `Idea.description`/`content` e `Annotation.content`, usada pela tool MCP `SearchNotesTool` (a geração de resposta é feita pelo próprio Claude — este serviço só faz a recuperação, sem chave de API de LLM).
+`EmbeddingIndexService` provê busca semântica sobre `Project.description`, `Idea.description`/`content`, `Annotation.content`, `Milestone.title`/`description` e `TechnicalDebt.title`, usada pela tool MCP `SearchNotesTool` (a geração de resposta é feita pelo próprio Claude — este serviço só faz a recuperação, sem chave de API de LLM).
 
 - **Ollama** (container `ollama`, modelo `bge-m3` — multilíngue, adequado ao conteúdo em português) gera os embeddings via `POST /api/embed`.
 - **Qdrant** (container `qdrant`, collection `project_manager_content`, exposto em `localhost:6333` para o dashboard de debug) armazena e busca os vetores.

@@ -11,7 +11,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[Description('Semantic search over project descriptions, idea descriptions/content, and annotation notes. Returns pointers and snippets, not full bodies — follow up with get-project-tool/get-idea-tool for the complete record.')]
+#[Description('Semantic search over project descriptions, idea descriptions/content, annotation notes, milestone titles/descriptions, and technical debt titles. Returns pointers and snippets, not full bodies — follow up with get-project-tool/get-idea-tool for the complete record.')]
 #[IsReadOnly]
 class SearchNotesTool extends Tool
 {
@@ -20,7 +20,7 @@ class SearchNotesTool extends Tool
         $request->validate([
             'query' => 'required|string',
             'types' => 'sometimes|array',
-            'types.*' => 'in:project,idea,annotation',
+            'types.*' => 'in:project,idea,annotation,milestone,technical_debt',
             'limit' => 'sometimes|integer|min:1|max:25',
         ]);
 
@@ -40,7 +40,7 @@ class SearchNotesTool extends Tool
         return [
             'query' => $schema->string()->description('Free-text search query.')->required(),
             'types' => $schema->array()
-                ->items($schema->string()->enum(['project', 'idea', 'annotation']))
+                ->items($schema->string()->enum(['project', 'idea', 'annotation', 'milestone', 'technical_debt']))
                 ->description('Restrict results to these content types. Omit to search everything.'),
             'limit' => $schema->integer()->description('Maximum number of results. Defaults to 10.'),
         ];

@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Jobs\IndexSearchableContent;
 use App\Models\Annotation;
 use App\Models\Idea;
+use App\Models\Milestone;
 use App\Models\Project;
+use App\Models\TechnicalDebt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -62,7 +64,7 @@ class EmbeddingIndexService
 
     public function upsertPoint(string $type, int $id, string $title, string $text): void
     {
-        if (trim($text) === '') {
+        if (trim($title.$text) === '') {
             $this->removePoint($type, $id);
 
             return;
@@ -142,7 +144,7 @@ class EmbeddingIndexService
     {
         $this->ensureCollection();
 
-        $counts = ['project' => 0, 'idea' => 0, 'annotation' => 0];
+        $counts = ['project' => 0, 'idea' => 0, 'annotation' => 0, 'milestone' => 0, 'technical_debt' => 0];
 
         Project::query()->select('id')->each(function (Project $project) use (&$counts) {
             IndexSearchableContent::dispatch('project', $project->id);
@@ -157,6 +159,16 @@ class EmbeddingIndexService
         Annotation::query()->select('id')->each(function (Annotation $annotation) use (&$counts) {
             IndexSearchableContent::dispatch('annotation', $annotation->id);
             $counts['annotation']++;
+        });
+
+        Milestone::query()->select('id')->each(function (Milestone $milestone) use (&$counts) {
+            IndexSearchableContent::dispatch('milestone', $milestone->id);
+            $counts['milestone']++;
+        });
+
+        TechnicalDebt::query()->select('id')->each(function (TechnicalDebt $debt) use (&$counts) {
+            IndexSearchableContent::dispatch('technical_debt', $debt->id);
+            $counts['technical_debt']++;
         });
 
         return $counts;
@@ -174,6 +186,8 @@ class EmbeddingIndexService
             'project' => 1_000_000_000,
             'idea' => 2_000_000_000,
             'annotation' => 3_000_000_000,
+            'milestone' => 4_000_000_000,
+            'technical_debt' => 5_000_000_000,
         };
 
         return $offset + $id;

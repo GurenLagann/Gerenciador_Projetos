@@ -75,4 +75,70 @@ class SearchIndexingObserverTest extends TestCase
 
         Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->type === 'annotation' && $job->id === $annotation->id);
     }
+
+    public function test_saving_a_milestone_queues_an_index_job(): void
+    {
+        Queue::fake();
+
+        $project = Project::create([
+            'name' => 'Alpha',
+            'slug' => 'alpha',
+            'path' => '/tmp/alpha',
+            'status_id' => ProjectStatus::where('code', 'planning')->value('id'),
+        ]);
+
+        $milestone = $project->milestones()->create(['title' => 'Ship v1']);
+
+        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->type === 'milestone' && $job->id === $milestone->id);
+    }
+
+    public function test_deleting_a_milestone_queues_a_removal_job(): void
+    {
+        Queue::fake();
+
+        $project = Project::create([
+            'name' => 'Alpha',
+            'slug' => 'alpha',
+            'path' => '/tmp/alpha',
+            'status_id' => ProjectStatus::where('code', 'planning')->value('id'),
+        ]);
+
+        $milestone = $project->milestones()->create(['title' => 'Ship v1']);
+        $milestone->delete();
+
+        Queue::assertPushed(RemoveFromSearchIndex::class, fn ($job) => $job->type === 'milestone' && $job->id === $milestone->id);
+    }
+
+    public function test_saving_a_technical_debt_queues_an_index_job(): void
+    {
+        Queue::fake();
+
+        $project = Project::create([
+            'name' => 'Alpha',
+            'slug' => 'alpha',
+            'path' => '/tmp/alpha',
+            'status_id' => ProjectStatus::where('code', 'planning')->value('id'),
+        ]);
+
+        $debt = $project->technicalDebts()->create(['title' => 'Refactor scanner']);
+
+        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->type === 'technical_debt' && $job->id === $debt->id);
+    }
+
+    public function test_deleting_a_technical_debt_queues_a_removal_job(): void
+    {
+        Queue::fake();
+
+        $project = Project::create([
+            'name' => 'Alpha',
+            'slug' => 'alpha',
+            'path' => '/tmp/alpha',
+            'status_id' => ProjectStatus::where('code', 'planning')->value('id'),
+        ]);
+
+        $debt = $project->technicalDebts()->create(['title' => 'Refactor scanner']);
+        $debt->delete();
+
+        Queue::assertPushed(RemoveFromSearchIndex::class, fn ($job) => $job->type === 'technical_debt' && $job->id === $debt->id);
+    }
 }

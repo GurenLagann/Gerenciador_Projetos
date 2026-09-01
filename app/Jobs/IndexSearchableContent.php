@@ -4,7 +4,9 @@ namespace App\Jobs;
 
 use App\Models\Annotation;
 use App\Models\Idea;
+use App\Models\Milestone;
 use App\Models\Project;
+use App\Models\TechnicalDebt;
 use App\Services\EmbeddingIndexService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -26,6 +28,8 @@ class IndexSearchableContent implements ShouldQueue
             'project' => $this->projectContent(),
             'idea' => $this->ideaContent(),
             'annotation' => $this->annotationContent(),
+            'milestone' => $this->milestoneContent(),
+            'technical_debt' => $this->technicalDebtContent(),
             default => [null, null],
         };
 
@@ -70,5 +74,25 @@ class IndexSearchableContent implements ShouldQueue
         $title = $annotation->title ?: ($annotation->annotatable->name ?? $annotation->annotatable->title ?? 'Annotation');
 
         return [$title, (string) $annotation->content];
+    }
+
+    /**
+     * @return array{0: ?string, 1: ?string}
+     */
+    protected function milestoneContent(): array
+    {
+        $milestone = Milestone::find($this->id);
+
+        return $milestone ? [$milestone->title, (string) $milestone->description] : [null, null];
+    }
+
+    /**
+     * @return array{0: ?string, 1: ?string}
+     */
+    protected function technicalDebtContent(): array
+    {
+        $debt = TechnicalDebt::find($this->id);
+
+        return $debt ? [$debt->title, ''] : [null, null];
     }
 }

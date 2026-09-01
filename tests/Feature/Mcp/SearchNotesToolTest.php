@@ -28,4 +28,17 @@ class SearchNotesToolTest extends TestCase
         ProjectManagerServer::tool(SearchNotesTool::class, [])
             ->assertHasErrors();
     }
+
+    public function test_it_accepts_milestone_and_technical_debt_as_valid_types(): void
+    {
+        Http::fake([
+            '*/api/embed' => Http::response(['embeddings' => [array_fill(0, 1024, 0.1)]]),
+            '*/points/search' => Http::response(['result' => []]),
+        ]);
+
+        ProjectManagerServer::tool(SearchNotesTool::class, [
+            'query' => 'refactor',
+            'types' => ['milestone', 'technical_debt'],
+        ])->assertOk();
+    }
 }
