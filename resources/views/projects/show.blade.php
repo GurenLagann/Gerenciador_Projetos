@@ -9,6 +9,7 @@
 @php
 $sm = $project->status;
 $git = $project->git_info;
+$liveGit = $git ? $project->liveGitStatus() : null;
 @endphp
 
 <div class="space-y-6 max-w-7xl">
@@ -68,9 +69,21 @@ $git = $project->git_info;
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                         </svg>
+                        @if($liveGit && $liveGit['dirty'] !== null)
+                        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                            style="background:{{ $liveGit['dirty'] ? '#fbbf24' : '#34d399' }};"
+                            title="{{ $liveGit['dirty'] ? 'Working tree com alterações não commitadas' : 'Working tree limpo' }}"></span>
+                        @endif
                         <span>{{ $git['branch'] }}</span>
                         <span style="color:var(--border-3);">·</span>
                         <span>{{ number_format($git['total_commits']) }} commits</span>
+                        @if($liveGit && $liveGit['has_upstream'] && ($liveGit['ahead'] > 0 || $liveGit['behind'] > 0))
+                        <span style="color:var(--border-3);">·</span>
+                        <span class="font-mono" title="Commits à frente / atrás do remoto">
+                            @if($liveGit['ahead'] > 0)↑{{ $liveGit['ahead'] }}@endif
+                            @if($liveGit['behind'] > 0)↓{{ $liveGit['behind'] }}@endif
+                        </span>
+                        @endif
                     </div>
                     @endif
                 </div>

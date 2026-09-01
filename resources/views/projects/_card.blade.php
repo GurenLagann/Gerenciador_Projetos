@@ -2,6 +2,7 @@
 $sm = $project->status;
 $git = $project->git_info;
 $lastCommit = $git['commits'][0] ?? null;
+$liveGit = $git ? $project->liveGitStatus() : null;
 @endphp
 
 <div class="card-hover rounded-2xl overflow-hidden group"
@@ -74,7 +75,18 @@ $lastCommit = $git['commits'][0] ?? null;
                     </svg>
                     <span class="text-xs font-mono" style="color:#818cf8;">{{ $lastCommit['hash'] }}</span>
                     <span style="color:var(--border-3);">·</span>
+                    @if($liveGit && $liveGit['dirty'] !== null)
+                    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style="background:{{ $liveGit['dirty'] ? '#fbbf24' : '#34d399' }};"
+                        title="{{ $liveGit['dirty'] ? 'Working tree com alterações não commitadas' : 'Working tree limpo' }}"></span>
+                    @endif
                     <span class="text-xs" style="color:var(--muted-2);">{{ $git['branch'] }}</span>
+                    @if($liveGit && $liveGit['has_upstream'] && ($liveGit['ahead'] > 0 || $liveGit['behind'] > 0))
+                    <span class="text-xs font-mono" style="color:var(--muted-2);" title="Commits à frente / atrás do remoto">
+                        @if($liveGit['ahead'] > 0)↑{{ $liveGit['ahead'] }}@endif
+                        @if($liveGit['behind'] > 0)↓{{ $liveGit['behind'] }}@endif
+                    </span>
+                    @endif
                 </div>
                 <p class="text-xs truncate" style="color:var(--muted-1);">{{ $lastCommit['message'] }}</p>
             </div>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\GitStatusService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -81,5 +82,23 @@ class Project extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * Live (per-request) git status: uncommitted changes and ahead/behind vs.
+     * the upstream branch. Unlike `git_info` (a snapshot written by the
+     * scanner), this runs git commands against the repo on every call.
+     *
+     * @return array{dirty: bool|null, has_upstream: bool, ahead: int|null, behind: int|null}
+     */
+    public function liveGitStatus(): array
+    {
+        if (! $this->path || ! $this->git_info) {
+            return ['dirty' => null, 'has_upstream' => false, 'ahead' => null, 'behind' => null];
+        }
+
+        $basePath = env('SCAN_BASE_PATH', '/var/www/host_projects');
+
+        return app(GitStatusService::class)->forPath($basePath.'/'.$this->path);
     }
 }
