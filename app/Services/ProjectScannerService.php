@@ -214,6 +214,7 @@ class ProjectScannerService
             'framework_version' => $this->detectFrameworkVersion($path, $files),
             'database_engine' => $this->detectDatabaseEngine($path, $files),
             'git_info' => $this->readGitInfo($path),
+            'size_bytes' => app(RepositorySizeService::class)->forPath($path),
             'is_scanned' => true,
             'last_scanned_at' => now(),
             'status' => $this->guessStatus($files, $path),
@@ -394,6 +395,13 @@ class ProjectScannerService
 
         $totalCommits = (int) $git('rev-list --count HEAD');
 
+        $authorsRaw = $git('log --format=%an');
+        $contributors = array_values(array_unique(array_filter(array_map(
+            'trim',
+            explode("\n", $authorsRaw)
+        ))));
+        sort($contributors);
+
         // Last 10 commits: hash|subject|author|date
         $logRaw = $git('log -10 --format="%h|%s|%an|%ci"');
         $commits = [];
@@ -418,6 +426,7 @@ class ProjectScannerService
             'branch' => $branch,
             'total_commits' => $totalCommits,
             'commits' => $commits,
+            'contributors' => $contributors,
         ];
     }
 
@@ -465,6 +474,7 @@ class ProjectScannerService
                 'framework_version' => $data['framework_version'],
                 'database_engine' => $data['database_engine'],
                 'git_info' => $data['git_info'],
+                'size_bytes' => $data['size_bytes'],
                 'is_scanned' => true,
                 'last_scanned_at' => now(),
             ]);
@@ -490,6 +500,7 @@ class ProjectScannerService
             'framework_version' => $data['framework_version'],
             'database_engine' => $data['database_engine'],
             'git_info' => $data['git_info'],
+            'size_bytes' => $data['size_bytes'],
             'status_id' => ProjectStatus::where('code', $data['status'])->value('id'),
             'is_scanned' => true,
             'last_scanned_at' => now(),

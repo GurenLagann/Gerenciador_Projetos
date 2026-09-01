@@ -18,7 +18,7 @@ class Project extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'name', 'slug', 'path', 'description', 'tech_stack', 'detected_files', 'git_info',
+        'name', 'slug', 'path', 'description', 'tech_stack', 'detected_files', 'git_info', 'size_bytes',
         'runtime_version', 'framework_version', 'database_engine',
         'status_id', 'progress', 'color', 'icon', 'is_scanned', 'last_scanned_at',
     ];
@@ -30,6 +30,7 @@ class Project extends Model
         'is_scanned' => 'boolean',
         'last_scanned_at' => 'datetime',
         'progress' => 'integer',
+        'size_bytes' => 'integer',
     ];
 
     protected static function booted(): void
@@ -83,6 +84,30 @@ class Project extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * Human-readable disk size (e.g. "1.5 MB"). Not Laravel's Number::fileSize()
+     * — that requires the intl extension, which this container doesn't have.
+     */
+    public function getFormattedSizeAttribute(): ?string
+    {
+        if ($this->size_bytes === null) {
+            return null;
+        }
+
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = (float) $this->size_bytes;
+        $unitIndex = 0;
+
+        while ($bytes >= 1024 && $unitIndex < count($units) - 1) {
+            $bytes /= 1024;
+            $unitIndex++;
+        }
+
+        $decimals = $unitIndex === 0 ? 0 : (fmod($bytes, 1) === 0.0 ? 0 : 1);
+
+        return number_format($bytes, $decimals).' '.$units[$unitIndex];
     }
 
     /**

@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Services;
+
+use App\Support\ExcludedProjectDirectories;
+use FilesystemIterator;
+use RecursiveCallbackFilterIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
+
+class RepositorySizeService
+{
+    /**
+     * Total size in bytes of a project's own files, skipping dependency and
+     * build-output directories entirely (never descends into them).
+     */
+    public function forPath(string $fullPath): int
+    {
+        if (! is_dir($fullPath)) {
+            return 0;
+        }
+
+        $filtered = new RecursiveCallbackFilterIterator(
+            new RecursiveDirectoryIterator($fullPath, FilesystemIterator::SKIP_DOTS),
+            function (SplFileInfo $current): bool {
+                if ($current->isDir() && in_array($current->getFilename(), ExcludedProjectDirectories::DIRECTORIES, true)) {
+                    return false;
+                }
+
+                return true;
+            }
+        );
+
+        $bytes = 0;
+
+        foreach (new RecursiveIteratorIterator($filtered) as $file) {
+            /** @var SplFileInfo $file */
+            if ($file->isFile()) {
+                $bytes += $file->getSize();
+            }
+        }
+
+        return $bytes;
+    }
+}

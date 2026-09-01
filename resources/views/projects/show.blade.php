@@ -86,6 +86,21 @@ $debtSignal = $git ? $project->liveTechnicalDebtSignal() : null;
                         </span>
                         @endif
                     </div>
+                    @if($project->size_bytes !== null || !empty($git['contributors']))
+                    <div class="flex items-center gap-2 text-xs" style="color:var(--muted-2);">
+                        @if($project->size_bytes !== null)
+                        <span>{{ $project->formatted_size }}</span>
+                        @endif
+                        @if($project->size_bytes !== null && !empty($git['contributors']))
+                        <span style="color:var(--border-3);">·</span>
+                        @endif
+                        @if(!empty($git['contributors']))
+                        <span title="{{ implode(', ', $git['contributors']) }}">
+                            {{ implode(', ', $git['contributors']) }}
+                        </span>
+                        @endif
+                    </div>
+                    @endif
                     @endif
                 </div>
             </div>

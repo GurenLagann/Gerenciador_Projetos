@@ -88,7 +88,14 @@ $liveGit = $git ? $project->liveGitStatus() : null;
                     </span>
                     @endif
                 </div>
-                <p class="text-xs truncate" style="color:var(--muted-1);">{{ $lastCommit['message'] }}</p>
+                <p class="text-xs truncate mb-1" style="color:var(--muted-1);">{{ $lastCommit['message'] }}</p>
+                @if($project->size_bytes !== null || !empty($git['contributors']))
+                <p class="text-xs" style="color:var(--muted-2);">
+                    @if($project->size_bytes !== null){{ $project->formatted_size }}@endif
+                    @if($project->size_bytes !== null && !empty($git['contributors']))·@endif
+                    @if(!empty($git['contributors'])){{ count($git['contributors']) }} {{ count($git['contributors']) === 1 ? 'contribuidor' : 'contribuidores' }}@endif
+                </p>
+                @endif
             </div>
             @endif
         </a>
