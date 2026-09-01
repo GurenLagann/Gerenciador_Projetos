@@ -12,7 +12,7 @@ class ProjectScannerService
 
     public function __construct()
     {
-        $this->basePath = env('SCAN_BASE_PATH', '/var/www/host_projects');
+        $this->basePath = config('services.scanner.base_path');
     }
 
     public function scan(bool $dryRun = false): array

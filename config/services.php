@@ -45,4 +45,8 @@ return [
         'collection' => env('QDRANT_COLLECTION', 'project_manager_content'),
     ],
 
+    'scanner' => [
+        'base_path' => env('SCAN_BASE_PATH', '/var/www/host_projects'),
+    ],
+
 ];

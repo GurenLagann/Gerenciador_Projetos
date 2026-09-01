@@ -12,7 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('projects', function (Blueprint $table) {
-            $table->unsignedBigInteger('size_bytes')->nullable()->after('git_info');
+            // No ->after() modifier: this app's database is SQLite, whose
+            // grammar doesn't support column positioning — it's silently a
+            // no-op there, so the column lands at the end of the table
+            // regardless of where this line appears.
+            $table->unsignedBigInteger('size_bytes')->nullable();
         });
     }
 

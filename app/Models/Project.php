@@ -123,7 +123,7 @@ class Project extends Model
             return ['dirty' => null, 'has_upstream' => false, 'ahead' => null, 'behind' => null];
         }
 
-        $basePath = env('SCAN_BASE_PATH', '/var/www/host_projects');
+        $basePath = config('services.scanner.base_path');
 
         return app(GitStatusService::class)->forPath($basePath.'/'.$this->path);
     }
@@ -139,7 +139,7 @@ class Project extends Model
             return ['todo' => 0, 'fixme' => 0, 'total' => 0];
         }
 
-        $basePath = env('SCAN_BASE_PATH', '/var/www/host_projects');
+        $basePath = config('services.scanner.base_path');
 
         return app(TechnicalDebtSignalService::class)->forPath($basePath.'/'.$this->path);
     }

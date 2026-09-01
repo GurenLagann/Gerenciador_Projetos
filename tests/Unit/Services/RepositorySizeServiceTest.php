@@ -39,7 +39,13 @@ class RepositorySizeServiceTest extends TestCase
                 continue;
             }
             $itemPath = $dir.'/'.$item;
-            is_dir($itemPath) ? $this->deleteDirectory($itemPath) : unlink($itemPath);
+            if (is_link($itemPath)) {
+                unlink($itemPath);
+            } elseif (is_dir($itemPath)) {
+                $this->deleteDirectory($itemPath);
+            } else {
+                unlink($itemPath);
+            }
         }
 
         rmdir($dir);
@@ -85,5 +91,45 @@ class RepositorySizeServiceTest extends TestCase
         $size = $this->service->forPath($this->path.'/does-not-exist');
 
         $this->assertSame(0, $size);
+    }
+
+    /**
+     * Symlinks must never be followed — besides being outside a project's
+     * "own" size, a symlink cycle (e.g. a deploy tool's "current" link, or
+     * any accidental self-reference) would otherwise recurse forever. This
+     * test uses a symlink to a separate, non-cyclic directory instead of an
+     * actual cycle, so a regression here inflates the count rather than
+     * hanging the test suite.
+     */
+    public function test_it_does_not_follow_symlinks(): void
+    {
+        $this->putFile('app/Foo.php', 100);
+
+        $externalPath = sys_get_temp_dir().'/repo_size_external_'.uniqid();
+        mkdir($externalPath, 0777, true);
+        file_put_contents($externalPath.'/big.txt', str_repeat('x', 9999));
+        symlink($externalPath, $this->path.'/linked');
+
+        $size = $this->service->forPath($this->path);
+
+        $this->assertSame(100, $size);
+
+        $this->deleteDirectory($externalPath);
+    }
+
+    public function test_it_does_not_count_a_symlinked_file(): void
+    {
+        $this->putFile('app/Foo.php', 100);
+
+        $externalPath = sys_get_temp_dir().'/repo_size_external_'.uniqid();
+        mkdir($externalPath, 0777, true);
+        file_put_contents($externalPath.'/big.txt', str_repeat('x', 9999));
+        symlink($externalPath.'/big.txt', $this->path.'/linked.txt');
+
+        $size = $this->service->forPath($this->path);
+
+        $this->assertSame(100, $size);
+
+        $this->deleteDirectory($externalPath);
     }
 }

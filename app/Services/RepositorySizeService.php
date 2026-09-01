@@ -24,6 +24,16 @@ class RepositorySizeService
         $filtered = new RecursiveCallbackFilterIterator(
             new RecursiveDirectoryIterator($fullPath, FilesystemIterator::SKIP_DOTS),
             function (SplFileInfo $current): bool {
+                // Symlinks are never followed — a project's own size shouldn't
+                // include whatever a link happens to point at, and directory
+                // links are already skipped by RecursiveDirectoryIterator's
+                // default hasChildren() behavior; this makes that explicit
+                // and also covers symlinked files, which getSize() would
+                // otherwise resolve through.
+                if ($current->isLink()) {
+                    return false;
+                }
+
                 if ($current->isDir() && in_array($current->getFilename(), ExcludedProjectDirectories::DIRECTORIES, true)) {
                     return false;
                 }

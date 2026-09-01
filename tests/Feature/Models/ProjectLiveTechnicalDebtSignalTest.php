@@ -34,9 +34,7 @@ class ProjectLiveTechnicalDebtSignalTest extends TestCase
 
     protected function overrideScanBasePath(string $path): void
     {
-        putenv('SCAN_BASE_PATH='.$path);
-        $_ENV['SCAN_BASE_PATH'] = $path;
-        $_SERVER['SCAN_BASE_PATH'] = $path;
+        config(['services.scanner.base_path' => $path]);
     }
 
     protected function deleteDirectory(string $dir): void

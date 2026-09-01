@@ -25,17 +25,9 @@ class ProjectScannerServiceDetectionTest extends TestCase
         parent::tearDown();
     }
 
-    /**
-     * ProjectScannerService reads SCAN_BASE_PATH via the env() helper, and
-     * .env already defines it — putenv() alone isn't enough to override it
-     * mid-process because Illuminate's Env repository prioritizes $_ENV/
-     * $_SERVER (populated once at bootstrap) over a later putenv() call.
-     */
     protected function overrideScanBasePath(string $path): void
     {
-        putenv('SCAN_BASE_PATH='.$path);
-        $_ENV['SCAN_BASE_PATH'] = $path;
-        $_SERVER['SCAN_BASE_PATH'] = $path;
+        config(['services.scanner.base_path' => $path]);
     }
 
     protected function deleteDirectory(string $dir): void
