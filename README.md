@@ -170,4 +170,6 @@ claude mcp add -s user project-manager -- docker compose --project-directory /va
 
 ## Mais detalhes
 
-Consulte [`CLAUDE.md`](./CLAUDE.md) para uma descrição arquitetural mais detalhada (services, observers, jobs, Livewire components e o servidor MCP).
+O `CLAUDE.md` na raiz traz a descrição arquitetural detalhada (services, observers, jobs, Livewire
+components, servidor MCP e as armadilhas de cada um). Ele **não é versionado** — está no
+`.gitignore`, é um arquivo local de cada checkout —, então num clone novo ele não existe.
