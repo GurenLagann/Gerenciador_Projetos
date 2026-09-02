@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\GitRepositoryRoot;
+
 class GitStatusService
 {
     /**
@@ -14,16 +16,21 @@ class GitStatusService
      */
     public function forPath(string $fullPath): array
     {
-        if (! is_dir($fullPath.'/.git')) {
+        $root = GitRepositoryRoot::for($fullPath);
+        if ($root === null) {
             return ['dirty' => null, 'has_upstream' => false, 'ahead' => null, 'behind' => null];
         }
 
         $git = fn (string $cmd) => shell_exec("git -c safe.directory='*' -C ".escapeshellarg($fullPath)." $cmd 2>/dev/null");
 
-        $porcelain = trim($git('status --porcelain') ?? '');
+        // Serviço sem .git próprio dentro de um monorepo: escopa na subpasta, senão
+        // uma mexida num irmão marcaria todos os cards como dirty.
+        $only = $root === realpath($fullPath) ? '' : ' -- .';
+
+        $porcelain = trim($git('status --porcelain'.$only) ?? '');
         $dirty = $porcelain !== '';
 
-        $leftRight = trim($git('rev-list --left-right --count @{u}...HEAD') ?? '');
+        $leftRight = trim($git('rev-list --left-right --count @{u}...HEAD'.$only) ?? '');
         $hasUpstream = false;
         $ahead = null;
         $behind = null;

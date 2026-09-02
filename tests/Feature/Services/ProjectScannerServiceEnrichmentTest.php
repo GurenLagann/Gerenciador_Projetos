@@ -90,4 +90,36 @@ class ProjectScannerServiceEnrichmentTest extends TestCase
         $this->assertEqualsCanonicalizing(['Alice', 'Bob'], $project->git_info['contributors']);
         $this->assertSame(150, $project->size_bytes);
     }
+
+    public function test_scan_scopes_git_history_to_each_service_inside_a_monorepo(): void
+    {
+        $repoPath = $this->basePath.'/microservices';
+        mkdir($repoPath.'/api', 0777, true);
+        mkdir($repoPath.'/sith', 0777, true);
+
+        $this->git($repoPath, 'init -q -b main');
+
+        $this->git($repoPath, 'config user.email ana@example.com');
+        $this->git($repoPath, 'config user.name Ana');
+        file_put_contents($repoPath.'/api/composer.json', '{}');
+        $this->git($repoPath, 'add api');
+        $this->git($repoPath, 'commit -q -m "api: bootstrap"');
+
+        $this->git($repoPath, 'config user.email bruno@example.com');
+        $this->git($repoPath, 'config user.name Bruno');
+        file_put_contents($repoPath.'/sith/composer.json', '{}');
+        $this->git($repoPath, 'add sith');
+        $this->git($repoPath, 'commit -q -m "sith: bootstrap"');
+
+        (new ProjectScannerService)->scan();
+
+        $api = Project::where('path', 'microservices/api')->firstOrFail();
+        $sith = Project::where('path', 'microservices/sith')->firstOrFail();
+
+        $this->assertSame(['Ana'], $api->git_info['contributors']);
+        $this->assertSame(['Bruno'], $sith->git_info['contributors']);
+        $this->assertSame(1, $api->git_info['total_commits']);
+        $this->assertSame(1, $sith->git_info['total_commits']);
+        $this->assertSame('main', $api->git_info['branch']);
+    }
 }

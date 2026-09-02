@@ -83,6 +83,10 @@
         .prose-pm a { color:#818cf8; text-decoration:underline; }
         .prose-pm blockquote { border-left:3px solid #4338ca; padding-left:1em; color:var(--muted-1); font-style:italic; }
 
+        /* Inline meta row: middot separators without empty spans */
+        .meta-inline { display:flex; flex-wrap:wrap; align-items:center; column-gap:.6rem; row-gap:.35rem; }
+        .meta-inline > * + *::before { content:'·'; color:var(--border-3); margin-right:.6rem; }
+
         /* Range input */
         input[type=range] { -webkit-appearance:none; height:4px; background:var(--border); border-radius:9999px; outline:none; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#6366f1; cursor:pointer; box-shadow:0 0 0 3px rgba(99,102,241,.25); }
@@ -174,7 +178,7 @@
     </aside>
 
     {{-- ── Main ─────────────────────────────────────────────── --}}
-    <div class="flex-1 flex flex-col min-h-full lg:ml-64">
+    <div class="flex-1 min-w-0 flex flex-col min-h-full lg:ml-64">
 
         {{-- Top bar --}}
         <header class="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 lg:px-8 h-14"

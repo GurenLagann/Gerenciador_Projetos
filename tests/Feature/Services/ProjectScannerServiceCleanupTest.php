@@ -96,6 +96,28 @@ class ProjectScannerServiceCleanupTest extends TestCase
         $this->assertSame($deletedAt->toDateTimeString(), $project->fresh()->deleted_at->toDateTimeString());
     }
 
+    public function test_it_soft_deletes_a_project_whose_directory_became_a_container(): void
+    {
+        // microservices era um projeto (tem .git próprio); agora seus serviços é que
+        // são os projetos, e o card do guarda-chuva sai.
+        $umbrella = Project::factory()->create([
+            'path' => 'microservices',
+            'is_scanned' => true,
+        ]);
+
+        mkdir($this->basePath.'/microservices/.git', 0777, true);
+        mkdir($this->basePath.'/microservices/api', 0777, true);
+        file_put_contents($this->basePath.'/microservices/api/composer.json', '{}');
+
+        (new ProjectScannerService)->scan(dryRun: false);
+
+        $this->assertSoftDeleted($umbrella);
+        $this->assertDatabaseHas('projects', [
+            'path' => 'microservices/api',
+            'deleted_at' => null,
+        ]);
+    }
+
     public function test_dry_run_does_not_soft_delete_missing_projects(): void
     {
         $project = Project::factory()->create([

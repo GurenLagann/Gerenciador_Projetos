@@ -1,0 +1,8 @@
+# Local dev: o bind mount ./ pertence ao uid do host (1000). Rodar php-fpm e o
+# worker com esse mesmo uid deixa storage/, bootstrap/cache e o SQLite graváveis
+# sem precisar afrouxar permissões no host.
+services:
+  php:
+    user: "1000:1000"
+  queue-worker:
+    user: "1000:1000"

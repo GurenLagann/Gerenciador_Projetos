@@ -35,7 +35,7 @@ $liveGit = $git ? $project->liveGitStatus() : null;
 
         <a href="{{ route('projects.show', $project) }}" class="block">
             @if($project->description)
-            <p class="text-xs leading-relaxed mb-3 line-clamp-2" style="color:var(--muted-1);">{{ $project->description }}</p>
+            <p class="text-xs leading-relaxed mb-3 line-clamp-2" style="color:var(--muted-1);">{{ $project->description_summary }}</p>
             @endif
 
             {{-- Tech stack --}}

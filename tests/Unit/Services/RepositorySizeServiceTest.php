@@ -34,6 +34,8 @@ class RepositorySizeServiceTest extends TestCase
             return;
         }
 
+        @chmod($dir, 0777);
+
         foreach (scandir($dir) as $item) {
             if ($item === '.' || $item === '..') {
                 continue;
@@ -131,5 +133,22 @@ class RepositorySizeServiceTest extends TestCase
         $this->assertSame(100, $size);
 
         $this->deleteDirectory($externalPath);
+    }
+
+    public function test_it_skips_directories_it_cannot_read(): void
+    {
+        $this->putFile('app/Foo.php', 100);
+        $this->putFile('writable/session/ci_session_abc', 5000);
+
+        $unreadable = $this->path.'/writable/session';
+        chmod($unreadable, 0000);
+
+        if (is_readable($unreadable)) {
+            $this->markTestSkipped('Rodando como root: chmod 0000 nao restringe a leitura.');
+        }
+
+        $size = $this->service->forPath($this->path);
+
+        $this->assertSame(100, $size);
     }
 }

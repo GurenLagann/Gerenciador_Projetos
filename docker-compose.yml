@@ -13,11 +13,15 @@ services:
       - php
     networks:
       - pm_network
-      - traefik-net
+      - helloo
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pm.rule=Host(`pm.local`)"
-      - "traefik.http.routers.pm.entrypoints=web"
+      # pm_nginx está em duas redes; sem isto o Traefik pode escolher o IP da
+      # pm_network, que ele não alcança (504).
+      - "traefik.docker.network=local_helloo"
+      - "traefik.http.routers.pm.rule=Host(`local-pm.helloo.com.br`)"
+      - "traefik.http.routers.pm.entrypoints=websecure"
+      - "traefik.http.routers.pm.tls=true"
       - "traefik.http.services.pm.loadbalancer.server.port=80"
 
   php:
@@ -49,15 +53,21 @@ services:
     networks:
       - pm_network
 
+  # Instância única de Ollama da máquina, adotada deste compose: o Obsidian fala
+  # com ela pela porta publicada em 127.0.0.1 e este projeto pelo nome `ollama` na
+  # pm_network. Uma GTX 1650 de 4 GB não comporta duas instâncias disputando VRAM.
   ollama:
     image: ollama/ollama:latest
-    container_name: pm_ollama
+    container_name: ollama
     restart: unless-stopped
+    gpus: all
+    ports:
+      - "127.0.0.1:11434:11434"
     environment:
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
     volumes:
-      - ollama_data:/root/.ollama
+      - ollama:/root/.ollama
     networks:
       - pm_network
 
@@ -75,9 +85,16 @@ services:
 networks:
   pm_network:
     driver: bridge
-  traefik-net:
+  # Rede do Traefik da infra (infrastructure/local/containers/traefik), criada por
+  # aquele compose sob o projeto "local" -- daí o nome real local_helloo.
+  helloo:
     external: true
+    name: local_helloo
 
 volumes:
-  ollama_data:
+  # Volume do Ollama que já existia na máquina (llama3.2 do Obsidian + bge-m3 daqui).
+  # Externo de propósito: os modelos não pertencem a este projeto, e um `down -v`
+  # aqui não pode levá-los embora.
+  ollama:
+    external: true
   qdrant_data:

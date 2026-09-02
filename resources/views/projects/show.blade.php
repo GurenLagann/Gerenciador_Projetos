@@ -11,45 +11,34 @@ $sm = $project->status;
 $git = $project->git_info;
 $liveGit = $git ? $project->liveGitStatus() : null;
 $debtSignal = $git ? $project->liveTechnicalDebtSignal() : null;
+
+// Versões detectadas que ainda não aparecem como chip da stack. Um chip mais
+// curto que já prefixa a versão também cobre ("CodeIgniter 4" × "CodeIgniter 4.7.0").
+$stackLower = array_map(fn ($t) => mb_strtolower(trim($t)), $project->tech_stack ?? []);
+$coberto = fn (string $v) => collect($stackLower)->contains(fn ($chip) => str_starts_with(mb_strtolower(trim($v)), $chip));
+$versions = array_filter([
+    'Runtime' => $project->runtime_version,
+    'Framework' => $project->framework_version,
+    'Banco de dados' => $project->database_engine,
+], fn ($v) => filled($v) && ! $coberto((string) $v));
 @endphp
 
 <div class="space-y-6 max-w-7xl">
 
-    <div class="flex flex-col lg:flex-row gap-5 items-start">
-
     {{-- Project header --}}
-    <div class="flex-1 min-w-0 w-full rounded-2xl border overflow-hidden" style="background:var(--surface); border-color:var(--border);">
+    <div class="w-full rounded-2xl border overflow-hidden" style="background:var(--surface); border-color:var(--border);">
         <div class="h-0.5" style="background:{{ $sm->bar }};"></div>
         <div class="p-6">
-            <div class="flex flex-col sm:flex-row items-start gap-5">
-                <div class="flex-1 min-w-0">
-                    <a href="{{ route('projects.index') }}"
-                        class="inline-flex items-center gap-1.5 text-xs mb-3 hover:opacity-80 transition-opacity"
-                        style="color:var(--muted-1);">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                        </svg>
-                        Projetos
-                    </a>
-                    <h1 class="text-2xl font-bold text-white tracking-tight mb-2">{{ $project->name }}</h1>
-                    @if($project->description)
-                    <p class="text-sm leading-relaxed mb-4" style="color:var(--muted-1);">{{ $project->description }}</p>
-                    @endif
-                    @if(!empty($project->tech_stack))
-                    <div class="flex flex-wrap gap-1.5">
-                        @foreach($project->tech_stack as $tech)
-                        <span class="text-xs px-2 py-0.5 rounded font-medium"
-                            style="background:rgba(99,102,241,.13); color:#a5b4fc;">{{ $tech }}</span>
-                        @endforeach
-                    </div>
-                    @endif
-                </div>
 
-                <div class="flex flex-col sm:items-end gap-3 flex-shrink-0 w-full sm:w-auto">
-                    <form method="POST" action="{{ route('projects.status', $project) }}" class="w-full sm:w-auto">
+            {{-- Title + actions --}}
+            <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+                <h1 class="text-2xl font-bold text-white tracking-tight min-w-0 flex-1">{{ $project->name }}</h1>
+
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <form method="POST" action="{{ route('projects.status', $project) }}">
                         @csrf @method('PATCH')
                         <select name="status" onchange="this.form.submit()"
-                            class="text-sm rounded-xl border px-3 py-2 font-medium focus:ring-0 focus:outline-none w-full sm:w-auto"
+                            class="text-sm rounded-xl border px-3 py-2 font-medium focus:ring-0 focus:outline-none"
                             style="background:var(--surface-2); border-color:var(--border-2); color:{{ $sm->color }};">
                             @foreach($statuses as $s)
                             <option value="{{ $s->code }}" @selected($project->status_id === $s->id)
@@ -57,17 +46,64 @@ $debtSignal = $git ? $project->liveTechnicalDebtSignal() : null;
                             @endforeach
                         </select>
                     </form>
-                    <form method="POST" action="{{ route('projects.destroy', $project) }}"
-                        onsubmit="return confirm('Remover este projeto do painel? Ele será ignorado em futuros scans.')">
-                        @csrf @method('DELETE')
-                        <button type="submit"
-                            class="btn-outline-danger text-xs px-3 py-2 rounded-xl border font-medium w-full">
-                            Remover projeto
+
+                    <div class="relative" x-data="{ open:false }" @keydown.escape.window="open=false">
+                        <button type="button" @click="open=!open" :aria-expanded="open"
+                            class="icon-action w-9 h-9 rounded-xl border flex items-center justify-center"
+                            style="border-color:var(--border-2);" aria-label="Mais ações">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
                         </button>
-                    </form>
+                        <div x-show="open" x-cloak @click.outside="open=false"
+                            class="absolute right-0 mt-2 w-52 rounded-xl border p-1.5 z-20"
+                            style="background:var(--surface-2); border-color:var(--border-2); box-shadow:0 12px 40px rgba(0,0,0,.45);">
+                            <form method="POST" action="{{ route('projects.destroy', $project) }}"
+                                onsubmit="return confirm('Remover este projeto do painel? Ele será ignorado em futuros scans.')">
+                                @csrf @method('DELETE')
+                                <button type="submit"
+                                    class="icon-action-danger w-full text-left text-xs px-2.5 py-2 rounded-lg font-medium">
+                                    Remover projeto
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Summary: one sentence. O texto completo vive nas anotações. --}}
+            @if($project->description_summary)
+            <p class="text-sm leading-relaxed mt-2 line-clamp-2" style="color:var(--muted-1);">{{ $project->description_summary }}</p>
+            @endif
+
+            {{-- Tech stack --}}
+            @if(!empty($project->tech_stack))
+            @php
+            $stack = array_values($project->tech_stack);
+            $extra = max(0, count($stack) - 4);
+            @endphp
+            <div class="flex flex-wrap items-center gap-1.5 mt-4" x-data="{ all:false }">
+                @foreach($stack as $i => $tech)
+                <span class="text-xs px-2 py-0.5 rounded font-medium"
+                    @if($i >= 4) x-show="all" x-cloak @endif
+                    style="background:rgba(99,102,241,.13); color:#a5b4fc;">{{ $tech }}</span>
+                @endforeach
+                @if($extra > 0)
+                <button type="button" @click="all=!all" x-text="all ? 'ver menos' : '+{{ $extra }}'"
+                    class="text-xs px-2 py-0.5 rounded font-medium transition-colors hover:text-white"
+                    style="background:var(--surface-2); color:var(--muted-1);">+{{ $extra }}</button>
+                @endif
+            </div>
+            @endif
+
+            {{-- Meta + progress --}}
+            <div class="mt-5 pt-4 border-t flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6"
+                style="border-color:var(--border);">
+
+                <div class="meta-inline text-xs flex-1 min-w-0" style="color:var(--muted-2);">
                     @if($git)
-                    <div class="flex items-center gap-2 text-xs" style="color:var(--muted-2);">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                         </svg>
                         @if($liveGit && $liveGit['dirty'] !== null)
@@ -75,89 +111,40 @@ $debtSignal = $git ? $project->liveTechnicalDebtSignal() : null;
                             style="background:{{ $liveGit['dirty'] ? '#fbbf24' : '#34d399' }};"
                             title="{{ $liveGit['dirty'] ? 'Working tree com alterações não commitadas' : 'Working tree limpo' }}"></span>
                         @endif
-                        <span>{{ $git['branch'] }}</span>
-                        <span style="color:var(--border-3);">·</span>
-                        <span>{{ number_format($git['total_commits']) }} commits</span>
-                        @if($liveGit && $liveGit['has_upstream'] && ($liveGit['ahead'] > 0 || $liveGit['behind'] > 0))
-                        <span style="color:var(--border-3);">·</span>
-                        <span class="font-mono" title="Commits à frente / atrás do remoto">
-                            @if($liveGit['ahead'] > 0)↑{{ $liveGit['ahead'] }}@endif
-                            @if($liveGit['behind'] > 0)↓{{ $liveGit['behind'] }}@endif
-                        </span>
-                        @endif
-                    </div>
-                    @if($project->size_bytes !== null || !empty($git['contributors']))
-                    <div class="flex items-center gap-2 text-xs" style="color:var(--muted-2);">
-                        @if($project->size_bytes !== null)
-                        <span>{{ $project->formatted_size }}</span>
-                        @endif
-                        @if($project->size_bytes !== null && !empty($git['contributors']))
-                        <span style="color:var(--border-3);">·</span>
-                        @endif
-                        @if(!empty($git['contributors']))
-                        <span title="{{ implode(', ', $git['contributors']) }}">
-                            {{ implode(', ', $git['contributors']) }}
-                        </span>
-                        @endif
-                    </div>
+                        {{ $git['branch'] }}
+                    </span>
+                    <span>{{ number_format($git['total_commits']) }} commits</span>
+                    @if($liveGit && $liveGit['has_upstream'] && ($liveGit['ahead'] > 0 || $liveGit['behind'] > 0))
+                    <span class="font-mono" title="Commits à frente / atrás do remoto">
+                        @if($liveGit['ahead'] > 0)↑{{ $liveGit['ahead'] }}@endif
+                        @if($liveGit['behind'] > 0)↓{{ $liveGit['behind'] }}@endif
+                    </span>
                     @endif
                     @endif
+                    @if($project->size_bytes !== null)
+                    <span>{{ $project->formatted_size }}</span>
+                    @endif
+                    @foreach($versions as $label => $value)
+                    <span title="{{ $label }}">{{ $value }}</span>
+                    @endforeach
                 </div>
-            </div>
 
-            {{-- Progress --}}
-            <div class="mt-6 pt-5 border-t" style="border-color:var(--border);"
-                x-data="{ progress: {{ $project->progress }} }">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-medium" style="color:var(--muted-2);">Progresso</span>
-                    <span class="text-xs font-semibold tabular-nums"
+                <div class="flex items-center gap-3 flex-shrink-0 w-full lg:w-auto"
+                    x-data="{ progress: {{ $project->progress }} }">
+                    <span class="text-xs font-medium whitespace-nowrap" style="color:var(--muted-2);">Progresso</span>
+                    <input type="range" min="0" max="100" x-model="progress" class="flex-1 lg:w-48"
+                        aria-label="Progresso do projeto"
+                        @change="fetch('{{ route('projects.progress', $project) }}', {
+                            method:'PATCH',
+                            headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+                            body:JSON.stringify({progress:progress})
+                        })">
+                    <span class="text-xs font-semibold tabular-nums w-9 text-right"
                         :style="progress >= 100 ? 'color:#6ee7b7;' : 'color:#94a3b8;'"
                         x-text="progress + '%'"></span>
                 </div>
-                <input type="range" min="0" max="100" x-model="progress" class="w-full"
-                    aria-label="Progresso do projeto"
-                    @change="fetch('{{ route('projects.progress', $project) }}', {
-                        method:'PATCH',
-                        headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
-                        body:JSON.stringify({progress:progress})
-                    })">
-                <div class="flex justify-between text-xs mt-1.5" style="color:var(--muted-3);">
-                    <span>0%</span><span>50%</span><span>100%</span>
-                </div>
             </div>
         </div>
-    </div>
-
-    {{-- Stack técnica --}}
-    @if($project->runtime_version || $project->framework_version || $project->database_engine)
-    <div class="rounded-2xl border p-5 flex-shrink-0 w-full lg:w-64"
-        style="background:var(--surface); border-color:var(--border);">
-        <h3 class="text-xs font-semibold uppercase tracking-wide mb-4" style="color:var(--muted-2);">
-            Stack Técnica
-        </h3>
-        <dl class="space-y-3 text-sm">
-            @if($project->runtime_version)
-            <div>
-                <dt class="text-xs" style="color:var(--muted-1);">Runtime</dt>
-                <dd class="text-white font-medium">{{ $project->runtime_version }}</dd>
-            </div>
-            @endif
-            @if($project->framework_version)
-            <div>
-                <dt class="text-xs" style="color:var(--muted-1);">Framework</dt>
-                <dd class="text-white font-medium">{{ $project->framework_version }}</dd>
-            </div>
-            @endif
-            @if($project->database_engine)
-            <div>
-                <dt class="text-xs" style="color:var(--muted-1);">Banco de dados</dt>
-                <dd class="text-white font-medium">{{ $project->database_engine }}</dd>
-            </div>
-            @endif
-        </dl>
-    </div>
-    @endif
-
     </div>
 
     {{-- Content grid --}}

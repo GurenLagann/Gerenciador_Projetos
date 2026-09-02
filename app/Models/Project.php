@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use League\CommonMark\CommonMarkConverter;
 
 class Project extends Model
 {
@@ -84,6 +85,38 @@ class Project extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * Description rendered as Markdown. Same converter options as the annotation
+     * editor: no raw HTML, no unsafe links.
+     */
+    public function getDescriptionHtmlAttribute(): ?string
+    {
+        if (blank($this->description)) {
+            return null;
+        }
+
+        $converter = new CommonMarkConverter(['html_input' => 'strip', 'allow_unsafe_links' => false]);
+
+        return $converter->convert($this->description)->getContent();
+    }
+
+    /**
+     * First sentence of the description, plain text. Used by the project card and
+     * the project header — the full text belongs in the annotations.
+     */
+    public function getDescriptionSummaryAttribute(): ?string
+    {
+        $plain = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $this->description_html)));
+
+        if ($plain === '') {
+            return null;
+        }
+
+        $summary = Str::contains($plain, '. ') ? Str::before($plain, '. ').'.' : $plain;
+
+        return Str::limit($summary, 200);
     }
 
     /**

@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
+    // O painel conta projetos e ideias no banco: sem o trait a home devolve 500.
+    use RefreshDatabase;
+
     /**
      * A basic test example.
      */

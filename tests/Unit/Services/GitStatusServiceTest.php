@@ -24,6 +24,7 @@ class GitStatusServiceTest extends TestCase
     protected function tearDown(): void
     {
         $this->deleteDirectory($this->repoPath);
+        $this->overrideScanBasePath('/var/www/host_projects');
 
         parent::tearDown();
     }
@@ -148,5 +149,32 @@ class GitStatusServiceTest extends TestCase
         $this->assertNull($status['behind']);
 
         $this->deleteDirectory($notARepo);
+    }
+
+    public function test_it_scopes_dirty_to_the_service_directory_inside_a_monorepo(): void
+    {
+        // Serviço sem .git próprio dentro de um monorepo: o status precisa ser o
+        // da subpasta, senão qualquer mexida num irmão suja o card de todos.
+        $this->overrideScanBasePath(dirname($this->repoPath));
+
+        mkdir($this->repoPath.'/api', 0777, true);
+        mkdir($this->repoPath.'/sith', 0777, true);
+        $this->git('init -q -b main');
+        $this->git('config user.email test@example.com');
+        $this->git('config user.name "Test User"');
+        file_put_contents($this->repoPath.'/api/composer.json', '{}');
+        file_put_contents($this->repoPath.'/sith/composer.json', '{}');
+        $this->git('add .');
+        $this->git('commit -q -m "initial commit"');
+
+        file_put_contents($this->repoPath.'/api/wip.php', '<?php');
+
+        $this->assertTrue($this->service->forPath($this->repoPath.'/api')['dirty']);
+        $this->assertFalse($this->service->forPath($this->repoPath.'/sith')['dirty']);
+    }
+
+    protected function overrideScanBasePath(string $path): void
+    {
+        config(['services.scanner.base_path' => $path]);
     }
 }

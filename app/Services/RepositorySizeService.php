@@ -34,6 +34,12 @@ class RepositorySizeService
                     return false;
                 }
 
+                // Diretório ilegível (ex.: writable/session 0700 de outro owner no mount
+                // do host): descer nele faz o iterator lançar UnexpectedValueException.
+                if ($current->isDir() && ! $current->isReadable()) {
+                    return false;
+                }
+
                 if ($current->isDir() && in_array($current->getFilename(), ExcludedProjectDirectories::DIRECTORIES, true)) {
                     return false;
                 }
@@ -44,7 +50,15 @@ class RepositorySizeService
 
         $bytes = 0;
 
-        foreach (new RecursiveIteratorIterator($filtered) as $file) {
+        $files = new RecursiveIteratorIterator(
+            $filtered,
+            RecursiveIteratorIterator::LEAVES_ONLY,
+            // Rede de segurança para o que escapar do filtro (permissão que muda
+            // entre o teste e a descida): pula a subárvore em vez de estourar.
+            RecursiveIteratorIterator::CATCH_GET_CHILD
+        );
+
+        foreach ($files as $file) {
             /** @var SplFileInfo $file */
             if ($file->isFile()) {
                 $bytes += $file->getSize();
