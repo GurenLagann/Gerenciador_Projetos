@@ -83,6 +83,14 @@
         .prose-pm a { color:#818cf8; text-decoration:underline; }
         .prose-pm blockquote { border-left:3px solid #4338ca; padding-left:1em; color:var(--muted-1); font-style:italic; }
 
+        /* Corpo de anotação recolhido: ~10 linhas, com fade para a cor do card */
+        .note-clamp { max-height: 16rem; overflow: hidden; position: relative; }
+        .note-clamp::after {
+            content:''; position:absolute; left:0; right:0; bottom:0; height:3rem;
+            background:linear-gradient(to bottom, rgba(22,30,45,0), var(--surface));
+            pointer-events:none;
+        }
+
         /* Inline meta row: middot separators without empty spans */
         .meta-inline { display:flex; flex-wrap:wrap; align-items:center; column-gap:.6rem; row-gap:.35rem; }
         .meta-inline > * + *::before { content:'·'; color:var(--border-3); margin-right:.6rem; }

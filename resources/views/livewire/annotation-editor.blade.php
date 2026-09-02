@@ -95,7 +95,7 @@
     {{-- List --}}
     <div class="space-y-3">
         @forelse($annotations as $annotation)
-        <div class="rounded-2xl border group transition-all"
+        <div wire:key="annotation-{{ $annotation->id }}" class="rounded-2xl border group transition-all"
             style="background:var(--surface); border-color:{{ $annotation->pinned ? 'rgba(99,102,241,.4)' : 'var(--border)' }};">
 
             @if($annotation->pinned)
@@ -142,8 +142,22 @@
                     </div>
                 </div>
 
-                <div class="prose-pm text-sm leading-relaxed">
-                    {!! $converter->convert($annotation->content)->getContent() !!}
+                {{-- Corpo: recolhido por padrão; o botão só aparece se de fato transborda. --}}
+                <div x-data="{ open: false, overflows: false }"
+                    x-init="$nextTick(() => overflows = $refs.body.scrollHeight > $refs.body.clientHeight + 8)">
+                    <div x-ref="body" class="prose-pm text-sm leading-relaxed note-clamp"
+                        :class="{ 'note-clamp': !open }">
+                        {!! $converter->convert($annotation->content)->getContent() !!}
+                    </div>
+                    <button type="button" x-show="overflows" x-cloak @click="open = !open"
+                        class="inline-flex items-center gap-1 text-xs mt-2 hover:opacity-80 transition-opacity"
+                        style="color:#818cf8;">
+                        <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-90': open }"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <span x-text="open ? 'Exibir menos' : 'Exibir mais'">Exibir mais</span>
+                    </button>
                 </div>
 
                 <div class="flex items-center justify-between mt-3 pt-3 border-t" style="border-color:var(--border);">

@@ -21,6 +21,15 @@ $versions = array_filter([
     'Framework' => $project->framework_version,
     'Banco de dados' => $project->database_engine,
 ], fn ($v) => filled($v) && ! $coberto((string) $v));
+
+// Marcos e débitos concluídos ficam ocultos por padrão; o rótulo do botão diz quantos são.
+$marcosFeitos = $project->milestones->where('completed', true)->count();
+$marcosAbertos = $project->milestones->count() - $marcosFeitos;
+$rotuloMarcos = 'Mostrar '.$marcosFeitos.' concluído'.($marcosFeitos === 1 ? '' : 's');
+
+$debitosFeitos = $project->technicalDebts->where('resolved', true)->count();
+$debitosAbertos = $project->technicalDebts->count() - $debitosFeitos;
+$rotuloDebitos = 'Mostrar '.$debitosFeitos.' resolvido'.($debitosFeitos === 1 ? '' : 's');
 @endphp
 
 <div class="space-y-6 max-w-7xl">
@@ -159,7 +168,7 @@ $versions = array_filter([
         <div class="flex flex-col gap-5">
 
         {{-- Milestones --}}
-        <div class="rounded-2xl border p-5" style="background:var(--surface); border-color:var(--border);">
+        <div x-data="{ showDone: false }" class="rounded-2xl border p-5" style="background:var(--surface); border-color:var(--border);">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold text-white flex items-center gap-2">
                     <svg class="w-4 h-4" style="color:#6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,9 +216,26 @@ $versions = array_filter([
             </div>
             @endif
 
+            @if($marcosFeitos > 0)
+            <button type="button" @click="showDone = !showDone"
+                class="flex items-center gap-1 text-xs mb-2 hover:opacity-80 transition-opacity"
+                style="color:var(--muted-2);">
+                <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-90': showDone }"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <span x-text="showDone ? 'Ocultar concluídos' : @js($rotuloMarcos)">{{ $rotuloMarcos }}</span>
+            </button>
+            @endif
+
             <div class="space-y-0.5">
+                @if($marcosFeitos > 0 && $marcosAbertos === 0)
+                <div x-show="!showDone" class="text-center py-6" style="color:var(--muted-3);">
+                    <p class="text-xs">Todos os marcos concluídos.</p>
+                </div>
+                @endif
                 @forelse($project->milestones as $milestone)
-                <div class="flex items-center gap-2.5 group px-2 py-2 rounded-xl hover:bg-white/[.03] transition-colors">
+                <div @if($milestone->completed) x-show="showDone" x-cloak @endif class="flex items-center gap-2.5 group px-2 py-2 rounded-xl hover:bg-white/[.03] transition-colors">
                     <form method="POST" action="{{ route('milestones.toggle', [$project, $milestone]) }}">
                         @csrf @method('PATCH')
                         <button type="submit"
@@ -249,7 +275,7 @@ $versions = array_filter([
         </div>
 
         {{-- Débito Técnico --}}
-        <div class="rounded-2xl border p-5" style="background:var(--surface); border-color:var(--border);">
+        <div x-data="{ showDone: false }" class="rounded-2xl border p-5" style="background:var(--surface); border-color:var(--border);">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold text-white flex items-center gap-2">
                     <svg class="w-4 h-4" style="color:#f59e0b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,9 +329,26 @@ $versions = array_filter([
                 </div>
             </form>
 
+            @if($debitosFeitos > 0)
+            <button type="button" @click="showDone = !showDone"
+                class="flex items-center gap-1 text-xs mb-2 hover:opacity-80 transition-opacity"
+                style="color:var(--muted-2);">
+                <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-90': showDone }"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <span x-text="showDone ? 'Ocultar resolvidos' : @js($rotuloDebitos)">{{ $rotuloDebitos }}</span>
+            </button>
+            @endif
+
             <div class="space-y-0.5">
+                @if($debitosFeitos > 0 && $debitosAbertos === 0)
+                <div x-show="!showDone" class="text-center py-6" style="color:var(--muted-3);">
+                    <p class="text-xs">Nenhum débito em aberto.</p>
+                </div>
+                @endif
                 @forelse($project->technicalDebts as $debt)
-                <div class="flex items-center gap-2.5 group px-2 py-2 rounded-xl hover:bg-white/[.03] transition-colors">
+                <div @if($debt->resolved) x-show="showDone" x-cloak @endif class="flex items-center gap-2.5 group px-2 py-2 rounded-xl hover:bg-white/[.03] transition-colors">
                     <form method="POST" action="{{ route('technical-debts.toggle', [$project, $debt]) }}">
                         @csrf @method('PATCH')
                         <button type="submit"
