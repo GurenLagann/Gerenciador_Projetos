@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Support\GitRepositoryRoot;
-use App\Support\ProjectContainerDirectories;
 use Illuminate\Support\Str;
 
 class ProjectScannerService
@@ -38,20 +37,17 @@ class ProjectScannerService
             return ['error' => "Base path not found: {$this->basePath}"];
         }
 
-        foreach (scandir($this->basePath) as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-            if ($entry === 'project-manager') {
-                continue;
-            }
+        $aliases = [];
+        $entries = $this->entriesToScan($aliases);
 
+        if (! $dryRun) {
+            $this->adoptAliasedProjects($aliases);
+        }
+
+        foreach ($entries as $entry) {
             $fullPath = $this->basePath.'/'.$entry;
-            if (! is_dir($fullPath)) {
-                continue;
-            }
 
-            if (in_array($entry, ProjectContainerDirectories::DIRECTORIES, true)) {
+            if (in_array($entry, config('services.scanner.container_directories'), true)) {
                 // Container fica de fora do $visitedPaths de propósito: se ele já
                 // tinha sido importado como projeto, o removeStaleProjects() abaixo
                 // o remove agora que os filhos ocuparam o lugar dele.
@@ -69,6 +65,107 @@ class ProjectScannerService
         }
 
         return $results;
+    }
+
+    /**
+     * Directory entries under base_path worth scanning, with blacklisted names
+     * dropped and symlink duplicates collapsed to a single canonical name.
+     *
+     * @param  array<string, string>  $aliases  Filled with `dropped name => canonical name`
+     *                                          for every entry collapsed away, so callers can
+     *                                          move existing records instead of orphaning them.
+     * @return array<int, string>
+     */
+    protected function entriesToScan(array &$aliases = []): array
+    {
+        $ignored = config('services.scanner.ignored_entries');
+        $byRealPath = [];
+
+        foreach (scandir($this->basePath) as $entry) {
+            if ($entry === '.' || $entry === '..' || in_array($entry, $ignored, true)) {
+                continue;
+            }
+
+            $fullPath = $this->basePath.'/'.$entry;
+            if (! is_dir($fullPath)) {
+                continue;
+            }
+
+            // realpath() follows symlinks, so every name pointing at the same
+            // directory lands in the same bucket and is reconciled below. Two
+            // checkouts of the same repository are *different* directories and
+            // stay separate on purpose — sharing a first commit does not make
+            // them duplicates.
+            $byRealPath[realpath($fullPath) ?: $fullPath][] = $entry;
+        }
+
+        $entries = [];
+
+        foreach ($byRealPath as $candidates) {
+            // A real directory wins over a symlink pointing at it: the symlink
+            // is a property of someone's local convenience (it can be deleted
+            // or repointed and the project is unchanged), while the directory
+            // is a property of the project itself — and this name becomes the
+            // project's identity in the database.
+            //
+            // A symlink is only dropped when its target is also under
+            // base_path. One that points outside it has no rival here and is
+            // imported normally, which is what makes `host_projects/foo ->
+            // /home/me/code/foo` keep working.
+            $real = array_values(array_filter(
+                $candidates,
+                fn (string $entry) => ! is_link($this->basePath.'/'.$entry)
+            ));
+
+            $canonical = ($real === [] ? $candidates : $real)[0];
+            $entries[] = $canonical;
+
+            foreach ($candidates as $dropped) {
+                if ($dropped !== $canonical) {
+                    $aliases[$dropped] = $canonical;
+                }
+            }
+        }
+
+        // scandir() order no longer survives the grouping above: a bucket keeps
+        // the position of its *first* candidate while the winner may be another
+        // one, so the order is restored explicitly rather than left to chance.
+        sort($entries);
+
+        return $entries;
+    }
+
+    /**
+     * Moves an existing record onto the canonical name when its directory turned
+     * out to be reachable under two names.
+     *
+     * Without this the record's old name simply stops appearing in the scan,
+     * removeStaleProjects() soft-deletes it, and saveProject() then refuses to
+     * ever touch it again ("removido manualmente pelo usuário") — stranding its
+     * annotations, milestones and technical debts on a row nothing reads. The
+     * project did not move; only the name we reach it by did.
+     *
+     * @param  array<string, string>  $aliases  dropped name => canonical name
+     */
+    protected function adoptAliasedProjects(array $aliases): void
+    {
+        foreach ($aliases as $dropped => $canonical) {
+            // Soft-deleted rows are excluded by the model's global scope, so a
+            // project the user deleted on purpose stays deleted.
+            $existing = Project::where('path', $dropped)->first();
+
+            if (! $existing) {
+                continue;
+            }
+
+            // Something already occupies the canonical name: the alias row is a
+            // real duplicate, and removeStaleProjects() may retire it normally.
+            if (Project::withTrashed()->where('path', $canonical)->exists()) {
+                continue;
+            }
+
+            $existing->update(['path' => $canonical]);
+        }
     }
 
     /**
