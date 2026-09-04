@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Support\ExcludedProjectDirectories;
 use FilesystemIterator;
 use RecursiveCallbackFilterIterator;
 use RecursiveDirectoryIterator;
@@ -40,7 +39,7 @@ class RepositorySizeService
                     return false;
                 }
 
-                if ($current->isDir() && in_array($current->getFilename(), ExcludedProjectDirectories::DIRECTORIES, true)) {
+                if ($current->isDir() && in_array($current->getFilename(), config('services.scanner.excluded_directories'), true)) {
                     return false;
                 }
 

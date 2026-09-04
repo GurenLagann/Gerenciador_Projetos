@@ -1,5 +1,8 @@
 <?php
 
+use App\Support\ExcludedProjectDirectories;
+use App\Support\ProjectContainerDirectories;
+
 return [
 
     /*
@@ -47,6 +50,32 @@ return [
 
     'scanner' => [
         'base_path' => env('SCAN_BASE_PATH', '/var/www/host_projects'),
+
+        /*
+         * The three lists below default to the constants in App\Support so the
+         * values live in one place, and each accepts a comma-separated env var
+         * that *adds* to the default — a host only needs to name what its own
+         * stack adds (e.g. SCAN_EXCLUDED_EXTRA=writable,var for CodeIgniter and
+         * Symfony), never to restate the whole list.
+         */
+
+        // Dependency/build output: skipped when measuring a project's own tree.
+        'excluded_directories' => array_values(array_unique(array_merge(
+            ExcludedProjectDirectories::DIRECTORIES,
+            array_filter(array_map('trim', explode(',', (string) env('SCAN_EXCLUDED_EXTRA', ''))))
+        ))),
+
+        // Directories that hold projects instead of being one: descend one level.
+        'container_directories' => array_values(array_unique(array_merge(
+            ProjectContainerDirectories::DIRECTORIES,
+            array_filter(array_map('trim', explode(',', (string) env('SCAN_CONTAINERS_EXTRA', ''))))
+        ))),
+
+        // Entries under base_path that are never imported at all (blacklist).
+        'ignored_entries' => array_values(array_unique(array_merge(
+            ['project-manager'],
+            array_filter(array_map('trim', explode(',', (string) env('SCAN_IGNORED_EXTRA', ''))))
+        ))),
     ],
 
 ];
