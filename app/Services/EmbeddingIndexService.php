@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\IndexSearchableContent;
+use App\Jobs\RemoveFromSearchIndex;
 use App\Models\Annotation;
 use App\Models\Idea;
 use App\Models\Milestone;
@@ -132,6 +133,101 @@ class EmbeddingIndexService
                 'score' => $point['score'],
             ])
             ->all();
+    }
+
+    /**
+     * All `source_id`s currently indexed under $type in Qdrant, paginating
+     * through the full result set via `next_page_offset`.
+     *
+     * @return array<int, int>
+     */
+    public function indexedSourceIds(string $type): array
+    {
+        $ids = [];
+        $offset = null;
+
+        do {
+            $body = [
+                'limit' => 250,
+                'with_payload' => true,
+                'with_vector' => false,
+                'filter' => [
+                    'must' => [
+                        ['key' => 'type', 'match' => ['value' => $type]],
+                    ],
+                ],
+            ];
+
+            if ($offset !== null) {
+                $body['offset'] = $offset;
+            }
+
+            $response = Http::baseUrl($this->qdrantBaseUrl)
+                ->post("/collections/{$this->collection}/points/scroll", $body)
+                ->throw();
+
+            foreach ($response->json('result.points', []) as $point) {
+                $ids[] = (int) $point['payload']['source_id'];
+            }
+
+            $offset = $response->json('result.next_page_offset');
+        } while ($offset !== null);
+
+        return $ids;
+    }
+
+    /**
+     * Diffs the database (source of truth) against the Qdrant index per
+     * Searchable type and dispatches the jobs needed to close the gap:
+     * missing records get (re)indexed, points with no live record behind
+     * them get removed. `annotation`, `milestone` and `technical_debt` all
+     * depend on a Project/Idea parent that can be soft-deleted — a record
+     * whose parent is gone counts as "should not be indexed", not as
+     * missing. Safe to run repeatedly; see
+     * docs/superpowers/specs/2026-09-05-rag-hardening-design.md.
+     *
+     * @return array<string, array{missing: int, orphaned: int}>
+     */
+    public function reconcile(): array
+    {
+        $this->ensureCollection();
+
+        $expectedIds = [
+            'project' => Project::query()->pluck('id')->all(),
+            'idea' => Idea::query()->pluck('id')->all(),
+            'annotation' => Annotation::whereHasMorph('annotatable', [Project::class, Idea::class])->pluck('id')->all(),
+            'milestone' => Milestone::whereHas('project')->pluck('id')->all(),
+            'technical_debt' => TechnicalDebt::whereHas('project')->pluck('id')->all(),
+        ];
+
+        $modelClasses = [
+            'project' => Project::class,
+            'idea' => Idea::class,
+            'annotation' => Annotation::class,
+            'milestone' => Milestone::class,
+            'technical_debt' => TechnicalDebt::class,
+        ];
+
+        $summary = [];
+
+        foreach ($expectedIds as $type => $ids) {
+            $indexed = $this->indexedSourceIds($type);
+
+            $missing = array_diff($ids, $indexed);
+            $orphaned = array_diff($indexed, $ids);
+
+            foreach ($missing as $id) {
+                IndexSearchableContent::dispatch($modelClasses[$type], $id);
+            }
+
+            foreach ($orphaned as $id) {
+                RemoveFromSearchIndex::dispatch($type, $id);
+            }
+
+            $summary[$type] = ['missing' => count($missing), 'orphaned' => count($orphaned)];
+        }
+
+        return $summary;
     }
 
     /**
