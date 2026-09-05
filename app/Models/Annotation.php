@@ -29,7 +29,7 @@ class Annotation extends Model implements Searchable
      */
     public function searchableContent(): array
     {
-        $title = $this->title ?: ($this->annotatable->name ?? $this->annotatable->title ?? 'Annotation');
+        $title = $this->title ?: ($this->annotatable?->name ?? $this->annotatable?->title ?? 'Annotation');
 
         return [$title, (string) $this->content];
     }
