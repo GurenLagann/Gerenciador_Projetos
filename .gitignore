@@ -33,3 +33,6 @@ CLAUDE.md
 /database/database.sqlite
 /database/*.sqlite.backup-*
 /storage/logs/*.log
+
+# Subagent-driven-development scratch workspaces (ledgers, briefs, review packages)
+/.superpowers/
