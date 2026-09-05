@@ -60,7 +60,8 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     restart: unless-stopped
-    gpus: all
+    devices:
+      - "nvidia.com/gpu=all"
     ports:
       - "127.0.0.1:11434:11434"
     environment:
@@ -97,4 +98,5 @@ volumes:
   # aqui não pode levá-los embora.
   ollama:
     external: true
+    name: gerenciador_projetos_ollama_data
   qdrant_data:
