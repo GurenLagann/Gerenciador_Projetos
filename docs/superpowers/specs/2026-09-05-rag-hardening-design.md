@@ -83,9 +83,14 @@ patch único.
 `milestone`, `technical_debt`):
 
 1. Monta o conjunto "deveria estar indexado": todos os IDs do tipo no
-   banco, com uma regra extra para `annotation` — só entra se
-   `annotatable` resolver (pai não soft-deletado). Os outros 4 tipos não
-   têm essa dependência de pai.
+   banco, com uma regra extra para os três tipos que pertencem a um
+   `Project`/`Idea` — `annotation` (pai polimórfico, Project ou Idea),
+   `milestone` e `technical_debt` (pai sempre Project) — só entram se o
+   pai resolver (não soft-deletado). `project` e `idea` não têm pai, então
+   não têm essa dependência. Sem essa correção, um milestone ou débito
+   técnico de um projeto soft-deletado (caso real: o projeto #10 tem 3
+   milestones) seria tratado como "deveria estar indexado" e recriaria o
+   mesmo bug do #52 por outra porta.
 2. Faz `scroll` no Qdrant filtrando por `payload.type`, pegando só
    `source_id` (sem os vetores) — monta o conjunto "está indexado".
 3. Diff de conjuntos:
@@ -111,9 +116,10 @@ patch único.
 
 **Testes:** feature test com `Http::fake()` para Qdrant/Ollama e
 `Queue::fake()`, cobrindo: registro faltando dispara index job; ponto
-órfão (registro apagado) dispara removal job; anotação com pai
-soft-deletado é tratada como "não deveria estar indexada" mesmo que o
-registro da própria anotação ainda exista.
+órfão (registro apagado) dispara removal job; anotação, milestone e
+débito técnico com pai (Project/Idea) soft-deletado são tratados como
+"não deveria estar indexado" mesmo que o registro do próprio filho
+ainda exista.
 
 ### 2. Guarda null-safe em `Annotation::searchableContent()` (débito #53)
 
