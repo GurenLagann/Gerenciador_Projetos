@@ -2,11 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\Annotation;
-use App\Models\Idea;
-use App\Models\Milestone;
-use App\Models\Project;
-use App\Models\TechnicalDebt;
+use App\Contracts\Searchable;
 use App\Services\EmbeddingIndexService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -15,8 +11,11 @@ class IndexSearchableContent implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * @param  class-string<\Illuminate\Database\Eloquent\Model&Searchable>  $modelClass
+     */
     public function __construct(
-        public string $type,
+        public string $modelClass,
         public int $id,
     ) {
         //
@@ -24,75 +23,18 @@ class IndexSearchableContent implements ShouldQueue
 
     public function handle(EmbeddingIndexService $index): void
     {
-        [$title, $text] = match ($this->type) {
-            'project' => $this->projectContent(),
-            'idea' => $this->ideaContent(),
-            'annotation' => $this->annotationContent(),
-            'milestone' => $this->milestoneContent(),
-            'technical_debt' => $this->technicalDebtContent(),
-            default => [null, null],
-        };
+        $model = $this->modelClass::find($this->id);
+
+        if (! $model instanceof Searchable) {
+            return;
+        }
+
+        [$title, $text] = $model->searchableContent();
 
         if ($title === null) {
             return;
         }
 
-        $index->upsertPoint($this->type, $this->id, $title, $text);
-    }
-
-    /**
-     * @return array{0: ?string, 1: ?string}
-     */
-    protected function projectContent(): array
-    {
-        $project = Project::find($this->id);
-
-        return $project ? [$project->name, (string) $project->description] : [null, null];
-    }
-
-    /**
-     * @return array{0: ?string, 1: ?string}
-     */
-    protected function ideaContent(): array
-    {
-        $idea = Idea::find($this->id);
-
-        return $idea ? [$idea->title, trim($idea->description."\n\n".$idea->content)] : [null, null];
-    }
-
-    /**
-     * @return array{0: ?string, 1: ?string}
-     */
-    protected function annotationContent(): array
-    {
-        $annotation = Annotation::find($this->id);
-
-        if (! $annotation) {
-            return [null, null];
-        }
-
-        $title = $annotation->title ?: ($annotation->annotatable->name ?? $annotation->annotatable->title ?? 'Annotation');
-
-        return [$title, (string) $annotation->content];
-    }
-
-    /**
-     * @return array{0: ?string, 1: ?string}
-     */
-    protected function milestoneContent(): array
-    {
-        $milestone = Milestone::find($this->id);
-
-        return $milestone ? [$milestone->title, (string) $milestone->description] : [null, null];
-    }
-
-    /**
-     * @return array{0: ?string, 1: ?string}
-     */
-    protected function technicalDebtContent(): array
-    {
-        $debt = TechnicalDebt::find($this->id);
-
-        return $debt ? [$debt->title, ''] : [null, null];
+        $index->upsertPoint($model->searchableType(), $this->id, $title, $text);
     }
 }

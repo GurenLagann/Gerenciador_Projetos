@@ -147,27 +147,27 @@ class EmbeddingIndexService
         $counts = ['project' => 0, 'idea' => 0, 'annotation' => 0, 'milestone' => 0, 'technical_debt' => 0];
 
         Project::query()->select('id')->each(function (Project $project) use (&$counts) {
-            IndexSearchableContent::dispatch('project', $project->id);
+            IndexSearchableContent::dispatch(Project::class, $project->id);
             $counts['project']++;
         });
 
         Idea::query()->select('id')->each(function (Idea $idea) use (&$counts) {
-            IndexSearchableContent::dispatch('idea', $idea->id);
+            IndexSearchableContent::dispatch(Idea::class, $idea->id);
             $counts['idea']++;
         });
 
         Annotation::query()->select('id')->each(function (Annotation $annotation) use (&$counts) {
-            IndexSearchableContent::dispatch('annotation', $annotation->id);
+            IndexSearchableContent::dispatch(Annotation::class, $annotation->id);
             $counts['annotation']++;
         });
 
         Milestone::query()->select('id')->each(function (Milestone $milestone) use (&$counts) {
-            IndexSearchableContent::dispatch('milestone', $milestone->id);
+            IndexSearchableContent::dispatch(Milestone::class, $milestone->id);
             $counts['milestone']++;
         });
 
         TechnicalDebt::query()->select('id')->each(function (TechnicalDebt $debt) use (&$counts) {
-            IndexSearchableContent::dispatch('technical_debt', $debt->id);
+            IndexSearchableContent::dispatch(TechnicalDebt::class, $debt->id);
             $counts['technical_debt']++;
         });
 

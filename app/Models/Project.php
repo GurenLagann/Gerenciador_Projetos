@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contracts\Searchable;
 use App\Services\GitStatusService;
 use App\Services\TechnicalDebtSignalService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,10 +12,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use League\CommonMark\CommonMarkConverter;
 
-class Project extends Model
+class Project extends Model implements Searchable
 {
     use HasFactory, SoftDeletes;
 
@@ -156,9 +158,20 @@ class Project extends Model
             return ['dirty' => null, 'has_upstream' => false, 'ahead' => null, 'behind' => null];
         }
 
-        $basePath = config('services.scanner.base_path');
+        // Debt #25: _card.blade.php calls this for every project on the
+        // listing page, on every request — up to 2 shell_exec per card with
+        // no cache. A short TTL keeps the card "live" (per milestone #52)
+        // while bounding that cost; 30s is short enough that a push/commit
+        // shows up on the next page load or two.
+        return Cache::remember(
+            "project:{$this->id}:live_git_status",
+            now()->addSeconds(30),
+            function () {
+                $basePath = config('services.scanner.base_path');
 
-        return app(GitStatusService::class)->forPath($basePath.'/'.$this->path);
+                return app(GitStatusService::class)->forPath($basePath.'/'.$this->path);
+            }
+        );
     }
 
     /**
@@ -175,5 +188,18 @@ class Project extends Model
         $basePath = config('services.scanner.base_path');
 
         return app(TechnicalDebtSignalService::class)->forPath($basePath.'/'.$this->path);
+    }
+
+    public function searchableType(): string
+    {
+        return 'project';
+    }
+
+    /**
+     * @return array{0: ?string, 1: ?string}
+     */
+    public function searchableContent(): array
+    {
+        return [$this->name, (string) $this->description];
     }
 }

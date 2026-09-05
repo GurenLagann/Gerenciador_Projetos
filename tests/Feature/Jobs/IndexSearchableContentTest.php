@@ -3,8 +3,10 @@
 namespace Tests\Feature\Jobs;
 
 use App\Jobs\IndexSearchableContent;
+use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectStatus;
+use App\Models\TechnicalDebt;
 use App\Services\EmbeddingIndexService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -36,7 +38,7 @@ class IndexSearchableContentTest extends TestCase
             'description' => 'Get the first version out the door',
         ]);
 
-        (new IndexSearchableContent('milestone', $milestone->id))->handle(app(EmbeddingIndexService::class));
+        (new IndexSearchableContent(Milestone::class, $milestone->id))->handle(app(EmbeddingIndexService::class));
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), '/api/embed')
@@ -55,7 +57,7 @@ class IndexSearchableContentTest extends TestCase
 
         $debt = $this->makeProject()->technicalDebts()->create(['title' => 'Refactor the scanner']);
 
-        (new IndexSearchableContent('technical_debt', $debt->id))->handle(app(EmbeddingIndexService::class));
+        (new IndexSearchableContent(TechnicalDebt::class, $debt->id))->handle(app(EmbeddingIndexService::class));
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), '/api/embed')
@@ -68,7 +70,7 @@ class IndexSearchableContentTest extends TestCase
     {
         Http::fake();
 
-        (new IndexSearchableContent('milestone', 999))->handle(app(EmbeddingIndexService::class));
+        (new IndexSearchableContent(Milestone::class, 999))->handle(app(EmbeddingIndexService::class));
 
         Http::assertNothingSent();
     }

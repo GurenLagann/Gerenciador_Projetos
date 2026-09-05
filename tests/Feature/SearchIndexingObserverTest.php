@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use App\Jobs\IndexSearchableContent;
 use App\Jobs\RemoveFromSearchIndex;
+use App\Models\Annotation;
 use App\Models\Idea;
 use App\Models\IdeaPriority;
 use App\Models\IdeaStatus;
+use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectStatus;
+use App\Models\TechnicalDebt;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -28,7 +31,7 @@ class SearchIndexingObserverTest extends TestCase
             'status_id' => ProjectStatus::where('code', 'planning')->value('id'),
         ]);
 
-        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->type === 'project' && $job->id === $project->id);
+        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->modelClass === Project::class && $job->id === $project->id);
     }
 
     public function test_deleting_a_project_queues_a_removal_job(): void
@@ -57,7 +60,7 @@ class SearchIndexingObserverTest extends TestCase
             'priority_id' => IdeaPriority::where('code', 'medium')->value('id'),
         ]);
 
-        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->type === 'idea' && $job->id === $idea->id);
+        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->modelClass === Idea::class && $job->id === $idea->id);
     }
 
     public function test_saving_an_annotation_queues_an_index_job(): void
@@ -73,7 +76,7 @@ class SearchIndexingObserverTest extends TestCase
 
         $annotation = $project->annotations()->create(['title' => 'Note', 'content' => 'Content']);
 
-        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->type === 'annotation' && $job->id === $annotation->id);
+        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->modelClass === Annotation::class && $job->id === $annotation->id);
     }
 
     public function test_saving_a_milestone_queues_an_index_job(): void
@@ -89,7 +92,7 @@ class SearchIndexingObserverTest extends TestCase
 
         $milestone = $project->milestones()->create(['title' => 'Ship v1']);
 
-        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->type === 'milestone' && $job->id === $milestone->id);
+        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->modelClass === Milestone::class && $job->id === $milestone->id);
     }
 
     public function test_deleting_a_milestone_queues_a_removal_job(): void
@@ -122,7 +125,7 @@ class SearchIndexingObserverTest extends TestCase
 
         $debt = $project->technicalDebts()->create(['title' => 'Refactor scanner']);
 
-        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->type === 'technical_debt' && $job->id === $debt->id);
+        Queue::assertPushed(IndexSearchableContent::class, fn ($job) => $job->modelClass === TechnicalDebt::class && $job->id === $debt->id);
     }
 
     public function test_deleting_a_technical_debt_queues_a_removal_job(): void

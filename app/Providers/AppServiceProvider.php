@@ -7,11 +7,7 @@ use App\Models\Idea;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\TechnicalDebt;
-use App\Observers\AnnotationObserver;
-use App\Observers\IdeaObserver;
-use App\Observers\MilestoneObserver;
-use App\Observers\ProjectObserver;
-use App\Observers\TechnicalDebtObserver;
+use App\Observers\SearchableObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,10 +25,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Project::observe(ProjectObserver::class);
-        Idea::observe(IdeaObserver::class);
-        Annotation::observe(AnnotationObserver::class);
-        Milestone::observe(MilestoneObserver::class);
-        TechnicalDebt::observe(TechnicalDebtObserver::class);
+        Project::observe(SearchableObserver::class);
+        Idea::observe(SearchableObserver::class);
+        Annotation::observe(SearchableObserver::class);
+        Milestone::observe(SearchableObserver::class);
+        TechnicalDebt::observe(SearchableObserver::class);
     }
 }

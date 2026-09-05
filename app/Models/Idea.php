@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contracts\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Idea extends Model
+class Idea extends Model implements Searchable
 {
     use HasFactory, SoftDeletes;
 
@@ -50,5 +51,18 @@ class Idea extends Model
     public function convertedProject(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'converted_to_project_id');
+    }
+
+    public function searchableType(): string
+    {
+        return 'idea';
+    }
+
+    /**
+     * @return array{0: ?string, 1: ?string}
+     */
+    public function searchableContent(): array
+    {
+        return [$this->title, trim($this->description."\n\n".$this->content)];
     }
 }
