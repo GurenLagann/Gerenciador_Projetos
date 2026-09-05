@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use App\Support\ExcludedProjectDirectories;
-
 class TechnicalDebtSignalService
 {
     /**
@@ -19,7 +17,7 @@ class TechnicalDebtSignalService
 
         $excludeFlags = implode(' ', array_map(
             fn (string $dir) => '--exclude-dir='.escapeshellarg($dir),
-            ExcludedProjectDirectories::DIRECTORIES
+            config('services.scanner.excluded_directories')
         ));
         $cmd = "grep -rIoE $excludeFlags '\\bTODO\\b|\\bFIXME\\b' ".escapeshellarg($fullPath).' 2>/dev/null';
         $output = shell_exec($cmd) ?? '';
