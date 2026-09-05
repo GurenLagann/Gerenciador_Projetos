@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Contracts\Searchable;
 use App\Services\EmbeddingIndexService;
+use App\Services\FailedIndexingDebtRecorder;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -36,5 +37,13 @@ class IndexSearchableContent implements ShouldQueue
         }
 
         $index->upsertPoint($model->searchableType(), $this->id, $title, $text);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        app(FailedIndexingDebtRecorder::class)->record(
+            "index:{$this->modelClass}:{$this->id}",
+            $exception->getMessage(),
+        );
     }
 }
