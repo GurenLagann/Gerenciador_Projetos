@@ -14,17 +14,22 @@ class EmbeddingIndexServiceRebuildTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_rebuild_all_queues_a_job_for_every_milestone_and_technical_debt(): void
+    protected function makeProject(): Project
     {
-        Queue::fake();
-        Http::fake(['*/collections/*' => Http::response(['result' => ['status' => 'green']])]);
-
-        $project = Project::create([
+        return Project::create([
             'name' => 'Alpha',
             'slug' => 'alpha',
             'path' => '/tmp/alpha',
             'status_id' => ProjectStatus::where('code', 'planning')->value('id'),
         ]);
+    }
+
+    public function test_rebuild_all_queues_a_job_for_every_milestone_and_technical_debt(): void
+    {
+        Queue::fake();
+        Http::fake(['*/collections/*' => Http::response(['result' => ['status' => 'green']])]);
+
+        $project = $this->makeProject();
         $project->milestones()->create(['title' => 'Ship v1']);
         $project->technicalDebts()->create(['title' => 'Refactor scanner']);
 
@@ -36,5 +41,22 @@ class EmbeddingIndexServiceRebuildTest extends TestCase
 
         $this->assertSame(1, $counts['milestone']);
         $this->assertSame(1, $counts['technical_debt']);
+    }
+
+    public function test_rebuild_all_excludes_a_milestone_of_a_soft_deleted_project(): void
+    {
+        Queue::fake();
+        Http::fake(['*/collections/*' => Http::response(['result' => ['status' => 'green']])]);
+
+        $project = $this->makeProject();
+        $milestone = $project->milestones()->create(['title' => 'Ship v1']);
+        $project->delete();
+
+        Queue::fake();
+
+        $counts = app(EmbeddingIndexService::class)->rebuildAll();
+
+        $this->assertSame(0, $counts['milestone']);
+        Queue::assertNotPushed(\App\Jobs\IndexSearchableContent::class, fn ($job) => $job->modelClass === \App\Models\Milestone::class && $job->id === $milestone->id);
     }
 }

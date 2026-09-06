@@ -177,13 +177,44 @@ class EmbeddingIndexService
     }
 
     /**
+     * @return array<string, class-string<\Illuminate\Database\Eloquent\Model&\App\Contracts\Searchable>>
+     */
+    protected function modelClasses(): array
+    {
+        return [
+            'project' => Project::class,
+            'idea' => Idea::class,
+            'annotation' => Annotation::class,
+            'milestone' => Milestone::class,
+            'technical_debt' => TechnicalDebt::class,
+        ];
+    }
+
+    /**
+     * IDs of records that should currently be indexed, per type. `annotation`,
+     * `milestone` and `technical_debt` all depend on a Project/Idea parent
+     * that can be soft-deleted — a record whose parent is gone is excluded
+     * here, not just from reconcile()'s "missing" set but from rebuildAll()
+     * too, so the two commands never disagree about what belongs in the index.
+     *
+     * @return array<string, array<int, int>>
+     */
+    protected function expectedIds(): array
+    {
+        return [
+            'project' => Project::query()->pluck('id')->all(),
+            'idea' => Idea::query()->pluck('id')->all(),
+            'annotation' => Annotation::whereHasMorph('annotatable', [Project::class, Idea::class])->pluck('id')->all(),
+            'milestone' => Milestone::whereHas('project')->pluck('id')->all(),
+            'technical_debt' => TechnicalDebt::whereHas('project')->pluck('id')->all(),
+        ];
+    }
+
+    /**
      * Diffs the database (source of truth) against the Qdrant index per
      * Searchable type and dispatches the jobs needed to close the gap:
      * missing records get (re)indexed, points with no live record behind
-     * them get removed. `annotation`, `milestone` and `technical_debt` all
-     * depend on a Project/Idea parent that can be soft-deleted — a record
-     * whose parent is gone counts as "should not be indexed", not as
-     * missing. Safe to run repeatedly; see
+     * them get removed. Safe to run repeatedly; see
      * docs/superpowers/specs/2026-09-05-rag-hardening-design.md.
      *
      * @return array<string, array{missing: int, orphaned: int}>
@@ -192,25 +223,10 @@ class EmbeddingIndexService
     {
         $this->ensureCollection();
 
-        $expectedIds = [
-            'project' => Project::query()->pluck('id')->all(),
-            'idea' => Idea::query()->pluck('id')->all(),
-            'annotation' => Annotation::whereHasMorph('annotatable', [Project::class, Idea::class])->pluck('id')->all(),
-            'milestone' => Milestone::whereHas('project')->pluck('id')->all(),
-            'technical_debt' => TechnicalDebt::whereHas('project')->pluck('id')->all(),
-        ];
-
-        $modelClasses = [
-            'project' => Project::class,
-            'idea' => Idea::class,
-            'annotation' => Annotation::class,
-            'milestone' => Milestone::class,
-            'technical_debt' => TechnicalDebt::class,
-        ];
-
+        $modelClasses = $this->modelClasses();
         $summary = [];
 
-        foreach ($expectedIds as $type => $ids) {
+        foreach ($this->expectedIds() as $type => $ids) {
             $indexed = $this->indexedSourceIds($type);
 
             $missing = array_diff($ids, $indexed);
@@ -231,8 +247,11 @@ class EmbeddingIndexService
     }
 
     /**
-     * Dispatch an indexing job for every existing Project/Idea/Annotation.
-     * Used to backfill the index; observers handle future writes.
+     * Dispatch an indexing job for every record that should currently be
+     * indexed (same eligibility rule as reconcile() — a record whose
+     * Project/Idea parent is soft-deleted is excluded). Used to rebuild the
+     * index from scratch (e.g. after an embedding model change); observers
+     * handle future writes, and reconcile() handles day-to-day drift.
      *
      * @return array<string, int>
      */
@@ -240,32 +259,16 @@ class EmbeddingIndexService
     {
         $this->ensureCollection();
 
-        $counts = ['project' => 0, 'idea' => 0, 'annotation' => 0, 'milestone' => 0, 'technical_debt' => 0];
+        $modelClasses = $this->modelClasses();
+        $counts = [];
 
-        Project::query()->select('id')->each(function (Project $project) use (&$counts) {
-            IndexSearchableContent::dispatch(Project::class, $project->id);
-            $counts['project']++;
-        });
+        foreach ($this->expectedIds() as $type => $ids) {
+            foreach ($ids as $id) {
+                IndexSearchableContent::dispatch($modelClasses[$type], $id);
+            }
 
-        Idea::query()->select('id')->each(function (Idea $idea) use (&$counts) {
-            IndexSearchableContent::dispatch(Idea::class, $idea->id);
-            $counts['idea']++;
-        });
-
-        Annotation::query()->select('id')->each(function (Annotation $annotation) use (&$counts) {
-            IndexSearchableContent::dispatch(Annotation::class, $annotation->id);
-            $counts['annotation']++;
-        });
-
-        Milestone::query()->select('id')->each(function (Milestone $milestone) use (&$counts) {
-            IndexSearchableContent::dispatch(Milestone::class, $milestone->id);
-            $counts['milestone']++;
-        });
-
-        TechnicalDebt::query()->select('id')->each(function (TechnicalDebt $debt) use (&$counts) {
-            IndexSearchableContent::dispatch(TechnicalDebt::class, $debt->id);
-            $counts['technical_debt']++;
-        });
+            $counts[$type] = count($ids);
+        }
 
         return $counts;
     }
