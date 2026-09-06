@@ -75,4 +75,19 @@ class FailedIndexingDebtRecorderTest extends TestCase
 
         $this->assertSame(2, $project->technicalDebts()->count());
     }
+
+    public function test_record_does_not_treat_a_wildcard_character_in_the_message_as_a_sql_wildcard(): void
+    {
+        $project = $this->makeTargetProject();
+        $recorder = app(FailedIndexingDebtRecorder::class);
+
+        // The "_" below is a SQL LIKE single-character wildcard. Without
+        // escaping, the second call's title would accidentally match the
+        // first debt's title via LIKE and be treated as a duplicate, even
+        // though the two messages are genuinely different.
+        $recorder->record('index:App\\Models\\Annotation:1', 'Xyo error');
+        $recorder->record('index:App\\Models\\Annotation:2', 'X_o error');
+
+        $this->assertSame(2, $project->technicalDebts()->count());
+    }
 }

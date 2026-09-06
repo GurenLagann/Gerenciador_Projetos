@@ -49,6 +49,7 @@ class EmbeddingIndexServiceReconcileTest extends TestCase
         $ids = app(EmbeddingIndexService::class)->indexedSourceIds('milestone');
 
         $this->assertSame([1, 2, 3], $ids);
+        Http::assertSent(fn ($request) => ($request['offset'] ?? null) === 2);
     }
 
     public function test_reconcile_queues_index_job_for_a_missing_record_and_removal_job_for_an_orphaned_point(): void
@@ -62,7 +63,7 @@ class EmbeddingIndexServiceReconcileTest extends TestCase
         Queue::fake();
 
         Http::fake([
-            '*/collections/project_manager_content' => Http::response(['result' => ['status' => 'green']]),
+            '*/collections/'.config('services.qdrant.collection') => Http::response(['result' => ['status' => 'green']]),
             '*/points/scroll' => function ($request) {
                 $filterType = $request['filter']['must'][0]['match']['value'];
 
@@ -94,7 +95,7 @@ class EmbeddingIndexServiceReconcileTest extends TestCase
         Queue::fake();
 
         Http::fake([
-            '*/collections/project_manager_content' => Http::response(['result' => ['status' => 'green']]),
+            '*/collections/'.config('services.qdrant.collection') => Http::response(['result' => ['status' => 'green']]),
             '*/points/scroll' => function ($request) use ($milestone) {
                 $filterType = $request['filter']['must'][0]['match']['value'];
 

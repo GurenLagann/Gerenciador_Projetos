@@ -31,9 +31,15 @@ class FailedIndexingDebtRecorder
         $signature = Str::limit($message, 150);
         $prefix = "Job de indexação RAG falhou: {$signature}";
 
+        // Escape LIKE wildcards ('%', '_') and the escape character itself
+        // that may appear in $signature, so a message containing one of
+        // these doesn't accidentally match an unrelated title. SQLite has
+        // no default LIKE escape character, so it must be set explicitly.
+        $escapedPrefix = addcslashes($prefix, '\%_');
+
         $alreadyOpen = $project->technicalDebts()
             ->where('resolved', false)
-            ->where('title', 'like', "{$prefix}%")
+            ->whereRaw('title LIKE ? ESCAPE ?', ["{$escapedPrefix}%", '\\'])
             ->exists();
 
         if ($alreadyOpen) {

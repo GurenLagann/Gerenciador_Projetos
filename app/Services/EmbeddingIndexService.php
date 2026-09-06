@@ -149,7 +149,7 @@ class EmbeddingIndexService
         do {
             $body = [
                 'limit' => 250,
-                'with_payload' => true,
+                'with_payload' => ['source_id'],
                 'with_vector' => false,
                 'filter' => [
                     'must' => [
