@@ -71,7 +71,7 @@ services:
 
   # Instância única de Ollama da máquina, adotada deste compose: o Obsidian fala
   # com ela pela porta publicada em 127.0.0.1 e este projeto pelo nome `ollama` na
-  # pm_network. Uma GTX 1650 de 4 GB não comporta duas instâncias disputando VRAM.
+  # pm_network. Uma NVIDIA MX230 de 2GB não comporta duas instâncias disputando VRAM.
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
