@@ -50,4 +50,29 @@ class FailedIndexingDebtRecorderTest extends TestCase
 
         $this->assertSame(0, TechnicalDebt::count());
     }
+
+    public function test_record_collapses_a_cascade_of_different_keys_sharing_the_same_message(): void
+    {
+        $project = $this->makeTargetProject();
+        $recorder = app(FailedIndexingDebtRecorder::class);
+
+        $recorder->record('index:App\\Models\\TechnicalDebt:100', 'Connection refused');
+        $recorder->record('index:App\\Models\\TechnicalDebt:101', 'Connection refused');
+        $recorder->record('index:App\\Models\\TechnicalDebt:102', 'Connection refused');
+
+        $this->assertSame(1, $project->technicalDebts()->count());
+    }
+
+    public function test_record_creates_a_new_debt_when_the_previous_one_for_the_same_message_was_resolved(): void
+    {
+        $project = $this->makeTargetProject();
+        $recorder = app(FailedIndexingDebtRecorder::class);
+
+        $recorder->record('index:App\\Models\\Annotation:44', 'Class "annotation" not found');
+        $project->technicalDebts()->first()->update(['resolved' => true, 'resolved_at' => now()]);
+
+        $recorder->record('index:App\\Models\\Annotation:44', 'Class "annotation" not found');
+
+        $this->assertSame(2, $project->technicalDebts()->count());
+    }
 }
