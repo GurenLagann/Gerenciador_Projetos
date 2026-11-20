@@ -13,15 +13,21 @@ services:
       - php
     networks:
       - pm_network
-      - helloo
+      - proxy
+    # Traefik muda por máquina. Os padrões valem para a máquina pessoal
+    # (traefik-net, http://pm.local). Na infra da Helloo, defina no .env:
+    #   PM_TRAEFIK_NETWORK=local_helloo
+    #   PM_HOST=local-pm.helloo.com.br
+    #   PM_ENTRYPOINT=websecure
+    #   PM_TLS=true
     labels:
       - "traefik.enable=true"
       # pm_nginx está em duas redes; sem isto o Traefik pode escolher o IP da
       # pm_network, que ele não alcança (504).
-      - "traefik.docker.network=local_helloo"
-      - "traefik.http.routers.pm.rule=Host(`local-pm.helloo.com.br`)"
-      - "traefik.http.routers.pm.entrypoints=websecure"
-      - "traefik.http.routers.pm.tls=true"
+      - "traefik.docker.network=${PM_TRAEFIK_NETWORK:-traefik-net}"
+      - "traefik.http.routers.pm.rule=Host(`${PM_HOST:-pm.local}`)"
+      - "traefik.http.routers.pm.entrypoints=${PM_ENTRYPOINT:-web}"
+      - "traefik.http.routers.pm.tls=${PM_TLS:-false}"
       - "traefik.http.services.pm.loadbalancer.server.port=80"
 
   php:
@@ -83,6 +89,10 @@ services:
     environment:
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KV_CACHE_TYPE=q8_0
+      # Compartilhado com o obsidian-rag-agent: janela de sessão, não -1/
+      # infinito — os dois apps não podem manter os modelos residentes
+      # indefinidamente nos 7.6GB do host sem risco de OOM/swap.
+      - OLLAMA_KEEP_ALIVE=15m
     volumes:
       - ollama:/root/.ollama
     networks:
@@ -102,11 +112,11 @@ services:
 networks:
   pm_network:
     driver: bridge
-  # Rede do Traefik da infra (infrastructure/local/containers/traefik), criada por
-  # aquele compose sob o projeto "local" -- daí o nome real local_helloo.
-  helloo:
+  # Rede do Traefik, criada fora deste compose. Na máquina pessoal é a traefik-net
+  # (/var/www/traefik); na infra da Helloo é a local_helloo (projeto "local").
+  proxy:
     external: true
-    name: local_helloo
+    name: ${PM_TRAEFIK_NETWORK:-traefik-net}
 
 volumes:
   # Volume do Ollama que já existia na máquina (llama3.2 do Obsidian + bge-m3 daqui).
